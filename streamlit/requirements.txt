@@ -1,0 +1,5 @@
+pathlib
+streamlit
+streamlit_chatbox
+loguru
+sys

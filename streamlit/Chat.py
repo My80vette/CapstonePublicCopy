@@ -58,3 +58,6 @@ if "chatInit" not in st.session_state:
     st.session_state["chatInit"] = True
     logger.remove()
     initlogger()
+
+# run the app
+st.run()
