@@ -50,7 +50,9 @@ if query := st.chat_input("input your question here", key="chatBox"):
     logger.info("User sent message: " + query)
 
     # embedding
-    client = OpenAI(api_key="2f8c4fc6fba44228b5a9a268cc579fe5")
+    api_key = "2f8c4fc6fba44228b5a9a268cc579fe5"  
+    endpoint = "https://ingenuityai.openai.azure.com"  
+    client = OpenAI(api_key, endpoint)  
 
     embeddings = client.embeddings.create(
     model="text-embedding-ada-002",
@@ -69,14 +71,20 @@ if query := st.chat_input("input your question here", key="chatBox"):
     prompt = (
         f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
     )
-    openai.api_key = "2f8c4fc6fba44228b5a9a268cc579fe5"
-    openai.api_base = "https://ingenuityai.openai.azure.com"
-    response = openai.Completion.create(
-        engine="gpt-35-turbo:1106", prompt=prompt, max_tokens=1000
-    )
-    gpt_response = response.choices[0].text
 
-    chat_box.ai_say(gpt_response)
+    input_data = {  
+    "language": "en",  
+    "text": prompt,  
+    }  
+    # Send the request to the Azure OpenAI API  
+    response = client.predict(input_data)  
+
+    # response = openai.Completion.create(
+    #     engine="gpt-35-turbo:1106", prompt=prompt, max_tokens=1000
+    # )
+    # gpt_response = response.choices[0].text
+
+    chat_box.ai_say(response)
 
 # init page
 add_title()
