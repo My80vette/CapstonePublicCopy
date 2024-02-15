@@ -3,8 +3,8 @@ import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger
 import requests
-from openai import OpenAI
-
+from azure.cognitiveservices.language.textanalytics import TextAnalyticsClient
+from msrest.authentication import CognitiveServicesCredentials
 
 # app title on sidebar
 def add_title():
@@ -48,10 +48,10 @@ if query := st.chat_input("input your question here", key="chatBox"):
     chat_box.user_say(query)
     logger.info("User sent message: " + query)
 
-    # embedding
-    api_key = "2f8c4fc6fba44228b5a9a268cc579fe5"  
+    # embedding  
     endpoint = "https://ingenuityai.openai.azure.com"  
-    client = OpenAI(api_key=api_key, base_url=endpoint)  
+    credentials = CognitiveServicesCredentials("2f8c4fc6fba44228b5a9a268cc579fe5")
+    client = TextAnalyticsClient(endpoint=endpoint, credentials=credentials)
 
     # embeddings = client.embeddings.create(
     # model="text-embedding-ada-002",

@@ -2,5 +2,5 @@ pathlib
 streamlit
 streamlit_chatbox
 loguru
-openai
 requests
+azure_cognitiveservices_language_textanalytics
