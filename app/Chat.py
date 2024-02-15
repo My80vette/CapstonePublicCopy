@@ -54,7 +54,7 @@ if "chatInit" not in st.session_state:
     # embedding
     query = ""
     embedding = requests.post(
-        "https://adaembeddor.azurewebsites.net/embed", json={"texts": [query]}
+        "https://ingenuityai.openai.azure.com/", json={"texts": [query]}
     )
     embedding_vector = embedding.json()[0]["embedding"]
 
