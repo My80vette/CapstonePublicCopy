@@ -72,7 +72,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
     openai.api_key = "2f8c4fc6fba44228b5a9a268cc579fe5"
     openai.api_base = "https://ingenuityai.openai.azure.com"
     response = openai.Completion.create(
-        engine="davinci", prompt=prompt, max_tokens=1000
+        engine="gpt-35-turbo:1106", prompt=prompt, max_tokens=1000
     )
     gpt_response = response.choices[0].text
 
