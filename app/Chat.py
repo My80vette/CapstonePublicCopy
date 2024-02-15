@@ -3,8 +3,12 @@ import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger
 import requests
-from azure.cognitiveservices.language.textanalytics import TextAnalyticsClient
-from msrest.authentication import CognitiveServicesCredentials
+from azure.ai.textanalytics import TextAnalyticsClient, ExtractKeyPhrasesAction
+from azure.core.credentials import AzureKeyCredential
+
+#from msrest.authentication import CognitiveServicesCredentials
+
+#TextAnalyticsApiKeyCredential
 
 # app title on sidebar
 def add_title():
@@ -50,8 +54,8 @@ if query := st.chat_input("input your question here", key="chatBox"):
 
     # embedding  
     endpoint = "https://ingenuityai.openai.azure.com"  
-    credentials = CognitiveServicesCredentials("2f8c4fc6fba44228b5a9a268cc579fe5")
-    client = TextAnalyticsClient(endpoint=endpoint, credentials=credentials)
+    credentials = AzureKeyCredential("2f8c4fc6fba44228b5a9a268cc579fe5")
+    client = TextAnalyticsClient(endpoint=endpoint, credential=credentials)
 
     # embeddings = client.embeddings.create(
     # model="text-embedding-ada-002",
@@ -75,15 +79,37 @@ if query := st.chat_input("input your question here", key="chatBox"):
     "language": "en",  
     "text": query,  
     }  
-    # Send the request to the Azure OpenAI API  
-    response = client.predict(input_data)  
 
-    # response = openai.Completion.create(
-    #     engine="gpt-35-turbo:1106", prompt=prompt, max_tokens=1000
-    # )
-    # gpt_response = response.choices[0].text
+    documents = [{"id": "1", "language": "en", "text": query}]
+    
+    
+    # Extract key phrases
+    poller = client.begin_analyze_actions(
+        documents=documents,
+        actions=[ExtractKeyPhrasesAction()],
+        show_stats=True
+    )
+    result = poller.result()
 
-    chat_box.ai_say(response)
+    # Retrieve key phrases from the result
+    key_phrases = [phrase for doc in result for action in doc for phrase in action.key_phrases]
+
+    # Use the key phrases in your prompt
+    prompt = f"User asked: {query}. Based on concepts like {key_phrases}, provide a helpful response:"
+
+
+    openai_request = {
+        "prompt": prompt,
+        "max_tokens": 100,
+        "stop": "\n",
+    }
+    
+    response = requests.post("https://ingenuityai.openai.azure.com", headers={"Authorization": f"Bearer {credentials}"}, json=openai_request)
+
+
+    response_json = response.json()
+    gpt_response = response_json["choices"][0]["text"] 
+    chat_box.ai_say(gpt_response)
 
 # init page
 add_title()
