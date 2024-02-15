@@ -2,36 +2,9 @@ from pathlib import Path
 import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger
-# import sys
-# import openai
-# import os
-# from tenacity import retry, wait_random_exponential
+import requests
+import openai
 
-
-# # Configure Azure OpenAI Service API
-# openai.api_type = "azure"
-# openai.api_version = "2023-03-15-preview"
-# openai.api_base = os.getenv('OPENAI_API_BASE')
-# openai.api_key = os.getenv("OPENAI_API_KEY")
-# #openai.log = "debug"
-
-# # generate a response
-# @retry(wait=wait_random_exponential(multiplier=1, max=60))
-# def generate_response(prompt):
-#     st.session_state['messages'].append({"role": "user", "content": prompt})
-
-#     completion = openai.ChatCompletion.create(
-#         engine=model,
-#         messages=st.session_state['messages']
-#     )
-#     response = completion.choices[0].message.content
-#     st.session_state['messages'].append({"role": "assistant", "content": response})
-
-#     print(st.session_state['messages'])
-#     total_tokens = completion.usage.total_tokens
-#     prompt_tokens = completion.usage.prompt_tokens
-#     completion_tokens = completion.usage.completion_tokens
-#     return response
 
 # app title on sidebar
 def add_title():
@@ -67,15 +40,6 @@ def initlogger():
 # config for this page
 st.set_page_config(page_title="Chat")
 
-# simple chat box structure
-chat_box = ChatBox()
-chat_box.init_session()
-chat_box.output_messages()
-if query := st.chat_input("input your question here", key="chatBox"):
-    chat_box.user_say(query)
-    logger.info("User sent message: " + query)
-    chat_box.ai_say("you said: " + query)
-
 # init page
 add_title()
 if "chatInit" not in st.session_state:
@@ -86,6 +50,40 @@ if "chatInit" not in st.session_state:
     st.session_state["chatInit"] = True
     logger.remove()
     initlogger()
+
+    # embedding
+    query = ""
+    embedding = requests.post(
+        "https://adaembeddor.azurewebsites.net/embed", json={"texts": [query]}
+    )
+    embedding_vector = embedding.json()[0]["embedding"]
+
+    # get search results
+    search_request = {"embedding": embedding_vector}
+    search_url = "https://ingenuity-ai-search.search.windows.net/indexes/vector-1707238357310/docs"
+    search_results = requests.post(search_url, json=search_request)
+    results = search_results.json()["value"]
+    docs = [r["content"] for r in results[:5]]
+
+# simple chat box structure
+chat_box = ChatBox()
+chat_box.init_session()
+chat_box.output_messages()
+if query == st.chat_input("input your question here", key="chatBox"):
+    chat_box.user_say(query)
+    logger.info("User sent message: " + query)
+
+    # AI API
+    prompt = (
+        f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
+    )
+    openai.api_key = "2f8c4fc6fba44228b5a9a268cc579fe5"
+    response = openai.Completion.create(
+        engine="davinci", prompt=prompt, max_tokens=1000
+    )
+    gpt_response = response.choices[0].text
+
+    chat_box.ai_say(gpt_response)
 
 # run the app
 # st.run()
