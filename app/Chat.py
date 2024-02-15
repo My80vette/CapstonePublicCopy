@@ -4,6 +4,7 @@ from streamlit_chatbox import *
 from loguru import logger
 import requests
 import openai
+from openai import OpenAI
 
 
 # app title on sidebar
@@ -40,38 +41,29 @@ def initlogger():
 # config for this page
 st.set_page_config(page_title="Chat")
 
-# init page
-add_title()
-if "chatInit" not in st.session_state:
-    if "chatHistoryInit" in st.session_state:
-        del st.session_state["chatHistoryInit"]
-    if "optionsInit" in st.session_state:
-        del st.session_state["optionsInit"]
-    st.session_state["chatInit"] = True
-    logger.remove()
-    initlogger()
-
-    # embedding
-    query = ""
-    embedding = requests.post(
-        "https://ingenuityai.openai.azure.com/", json={"texts": [query]}
-    )
-    embedding_vector = embedding.json()[0]["embedding"]
-
-    # get search results
-    search_request = {"embedding": embedding_vector}
-    search_url = "https://ingenuity-ai-search.search.windows.net/indexes/vector-1707238357310/docs"
-    search_results = requests.post(search_url, json=search_request)
-    results = search_results.json()["value"]
-    docs = [r["content"] for r in results[:5]]
-
 # simple chat box structure
 chat_box = ChatBox()
 chat_box.init_session()
 chat_box.output_messages()
-if query == st.chat_input("input your question here", key="chatBox"):
+if query := st.chat_input("input your question here", key="chatBox"):
     chat_box.user_say(query)
     logger.info("User sent message: " + query)
+
+    # embedding
+    client = OpenAI()
+
+    embeddings = client.embeddings.create(
+    model="text-embedding-ada-002",
+    input=query,
+    encoding_format="float"
+    )
+
+    # get search results
+    search_request = {"embedding": embeddings}
+    search_url = "https://ingenuity-ai-search.search.windows.net/indexes/vector-1707238357310/docs"
+    search_results = requests.post(search_url, json=search_request)
+    results = search_results.json()["value"]
+    docs = [r["content"] for r in results[:5]]
 
     # AI API
     prompt = (
@@ -84,6 +76,17 @@ if query == st.chat_input("input your question here", key="chatBox"):
     gpt_response = response.choices[0].text
 
     chat_box.ai_say(gpt_response)
+
+# init page
+add_title()
+if "chatInit" not in st.session_state:
+    if "chatHistoryInit" in st.session_state:
+        del st.session_state["chatHistoryInit"]
+    if "optionsInit" in st.session_state:
+        del st.session_state["optionsInit"]
+    st.session_state["chatInit"] = True
+    logger.remove()
+    initlogger()
 
 # run the app
 st.run()
