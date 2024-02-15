@@ -50,7 +50,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
     logger.info("User sent message: " + query)
 
     # embedding
-    client = OpenAI()
+    client = OpenAI(api_key="2f8c4fc6fba44228b5a9a268cc579fe5")
 
     embeddings = client.embeddings.create(
     model="text-embedding-ada-002",
