@@ -53,27 +53,27 @@ if query := st.chat_input("input your question here", key="chatBox"):
     endpoint = "https://ingenuityai.openai.azure.com"  
     client = OpenAI(api_key=api_key, base_url=endpoint)  
 
-    embeddings = client.embeddings.create(
-    model="text-embedding-ada-002",
-    input=query,
-    encoding_format="float"
-    )
+    # embeddings = client.embeddings.create(
+    # model="text-embedding-ada-002",
+    # input=query,
+    # encoding_format="float"
+    # )
 
-    # get search results
-    search_request = {"embedding": embeddings}
-    search_url = "https://ingenuity-ai-search.search.windows.net/indexes/vector-1707238357310/docs"
-    search_results = requests.post(search_url, json=search_request)
-    results = search_results.json()["value"]
-    docs = [r["content"] for r in results[:5]]
+    # # get search results
+    # search_request = {"embedding": embeddings}
+    # search_url = "https://ingenuity-ai-search.search.windows.net/indexes/vector-1707238357310/docs"
+    # search_results = requests.post(search_url, json=search_request)
+    # results = search_results.json()["value"]
+    # docs = [r["content"] for r in results[:5]]
 
-    # AI API
-    prompt = (
-        f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
-    )
+    # # AI API
+    # prompt = (
+    #     f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
+    # )
 
     input_data = {  
     "language": "en",  
-    "text": prompt,  
+    "text": query,  
     }  
     # Send the request to the Azure OpenAI API  
     response = client.predict(input_data)  

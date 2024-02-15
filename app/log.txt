@@ -1,0 +1,2 @@
+[2024-02-15T14:35:59.640808-0700][INFO] User selected chat view
+[2024-02-15T14:36:03.159960-0700][INFO] User sent message: test
