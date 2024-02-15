@@ -86,4 +86,4 @@ if query == st.chat_input("input your question here", key="chatBox"):
     chat_box.ai_say(gpt_response)
 
 # run the app
-# st.run()
+st.run()
