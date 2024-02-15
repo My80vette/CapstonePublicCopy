@@ -89,4 +89,4 @@ if "chatInit" not in st.session_state:
     initlogger()
 
 # run the app
-st.run()
+# st.run()
