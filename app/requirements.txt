@@ -4,3 +4,4 @@ streamlit_chatbox
 loguru
 openai
 requests
+json
