@@ -92,14 +92,11 @@ if query := st.chat_input("input your question here", key="chatBox"):
     deployment_name = "ingenuityGPT"  # This will correspond to the custom name you chose for your deployment when you deployed a model. Use a gpt-35-turbo-instruct deployment.
 
     # Send a completion call to generate an answer
-    print("Sending a test completion job")
     response = client.chat.completions.create(
         model=deployment_name,
-        messages=[{"role": "system", "content": "talk about how fluffy kittens are."}],
+        messages=[{"role": "system", "content": query}],
     )
-    st.sidebar.write(response)
-
-    chat_box.ai_say("test")
+    chat_box.ai_say(response.choices[0].message.content)
 
 # init page
 add_title()
