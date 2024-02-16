@@ -2,8 +2,8 @@ from pathlib import Path
 import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger
-import requests
-from openai import OpenAI
+import os
+from openai import AzureOpenAI
 
 
 # app title on sidebar
@@ -49,9 +49,9 @@ if query := st.chat_input("input your question here", key="chatBox"):
     logger.info("User sent message: " + query)
 
     # embedding
-    api_key = "2f8c4fc6fba44228b5a9a268cc579fe5"  
-    endpoint = "https://ingenuityai.openai.azure.com"  
-    client = OpenAI(api_key=api_key, base_url=endpoint)  
+    # api_key = "2f8c4fc6fba44228b5a9a268cc579fe5"
+    # endpoint = "https://ingenuityai.openai.azure.com"
+    # client = OpenAI(api_key=api_key, base_url=endpoint)
 
     # embeddings = client.embeddings.create(
     # model="text-embedding-ada-002",
@@ -71,19 +71,35 @@ if query := st.chat_input("input your question here", key="chatBox"):
     #     f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
     # )
 
-    input_data = {  
-    "language": "en",  
-    "text": query,  
-    }  
-    # Send the request to the Azure OpenAI API  
-    response = client.predict(input_data)  
+    # input_data = {
+    # "language": "en",
+    # "text": query,
+    # }
+    # # Send the request to the Azure OpenAI API
+    # response = client.predict(input_data)
 
     # response = openai.Completion.create(
     #     engine="gpt-35-turbo:1106", prompt=prompt, max_tokens=1000
     # )
     # gpt_response = response.choices[0].text
 
-    chat_box.ai_say(response)
+    client = AzureOpenAI(
+        api_key="2f8c4fc6fba44228b5a9a268cc579fe5",
+        api_version="2023-07-01-preview",
+        azure_endpoint="https://ingenuityai.openai.azure.com/",
+    )
+
+    deployment_name = "ingenuityGPT"  # This will correspond to the custom name you chose for your deployment when you deployed a model. Use a gpt-35-turbo-instruct deployment.
+
+    # Send a completion call to generate an answer
+    print("Sending a test completion job")
+    response = client.chat.completions.create(
+        model=deployment_name,
+        messages=[{"role": "system", "content": "talk about how fluffy kittens are."}],
+    )
+    st.sidebar.write(response)
+
+    chat_box.ai_say("test")
 
 # init page
 add_title()
