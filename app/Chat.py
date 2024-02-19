@@ -69,7 +69,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
     # get search results
     endpoint = "https://ingenuity-ai-search.search.windows.net/"
     index_name = "vector-1707238357310"
-    api_version = "2020-06-30"
+    api_version = "2023-11-01"
     api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
     search_url = f"{endpoint}indexes/{index_name}/docs/search?api-version={api_version}"
     headers = {
@@ -78,22 +78,20 @@ if query := st.chat_input("input your question here", key="chatBox"):
     }
     params = {
         "search": query
-        # "select": "fields_to_return"
     }
-    searchResponse = requests.get(search_url, headers=headers, params=params)
+    searchResponse = requests.post(search_url, headers=headers, json=params)
     if searchResponse.status_code == 200:
         search_results = searchResponse.json()
-        st.sidebar.write(search_results)
+        # st.sidebar.write(search_results["value"][0])
     else:
         st.sidebar.write("Failed to retrieve search results:", searchResponse.text)
-        st.sidebar.write(searchResponse.status_code)
-    # search_results = requests.post(search_url, json=embeddings.data[0].embedding)
-    # docs = search_results
+        # st.sidebar.write(searchResponse.status_code)
+    # only use first chunk from result (token reasons)
+    docs = search_results["value"][0]
 
     # call AI API
     prompt = (
-        # f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
-        query
+        f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
     )
     response = client.chat.completions.create(
         model=deployment_name,
