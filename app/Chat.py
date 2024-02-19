@@ -2,36 +2,13 @@ from pathlib import Path
 import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger
-# import sys
-# import openai
-# import os
-# from tenacity import retry, wait_random_exponential
+import requests
+from azure.ai.textanalytics import TextAnalyticsClient, ExtractKeyPhrasesAction
+from azure.core.credentials import AzureKeyCredential
 
+#from msrest.authentication import CognitiveServicesCredentials
 
-# # Configure Azure OpenAI Service API
-# openai.api_type = "azure"
-# openai.api_version = "2023-03-15-preview"
-# openai.api_base = os.getenv('OPENAI_API_BASE')
-# openai.api_key = os.getenv("OPENAI_API_KEY")
-# #openai.log = "debug"
-
-# # generate a response
-# @retry(wait=wait_random_exponential(multiplier=1, max=60))
-# def generate_response(prompt):
-#     st.session_state['messages'].append({"role": "user", "content": prompt})
-
-#     completion = openai.ChatCompletion.create(
-#         engine=model,
-#         messages=st.session_state['messages']
-#     )
-#     response = completion.choices[0].message.content
-#     st.session_state['messages'].append({"role": "assistant", "content": response})
-
-#     print(st.session_state['messages'])
-#     total_tokens = completion.usage.total_tokens
-#     prompt_tokens = completion.usage.prompt_tokens
-#     completion_tokens = completion.usage.completion_tokens
-#     return response
+#TextAnalyticsApiKeyCredential
 
 # app title on sidebar
 def add_title():
@@ -74,7 +51,65 @@ chat_box.output_messages()
 if query := st.chat_input("input your question here", key="chatBox"):
     chat_box.user_say(query)
     logger.info("User sent message: " + query)
-    chat_box.ai_say("you said: " + query)
+
+    # embedding  
+    endpoint = "https://ingenuityai.openai.azure.com"  
+    credentials = AzureKeyCredential("2f8c4fc6fba44228b5a9a268cc579fe5")
+    client = TextAnalyticsClient(endpoint=endpoint, credential=credentials)
+
+    # embeddings = client.embeddings.create(
+    # model="text-embedding-ada-002",
+    # input=query,
+    # encoding_format="float"
+    # )
+
+    # # get search results
+    # search_request = {"embedding": embeddings}
+    # search_url = "https://ingenuity-ai-search.search.windows.net/indexes/vector-1707238357310/docs"
+    # search_results = requests.post(search_url, json=search_request)
+    # results = search_results.json()["value"]
+    # docs = [r["content"] for r in results[:5]]
+
+    # # AI API
+    # prompt = (
+    #     f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
+    # )
+
+    input_data = {  
+    "language": "en",  
+    "text": query,  
+    }  
+
+    documents = [{"id": "1", "language": "en", "text": query}]
+    
+    
+    # Extract key phrases
+    poller = client.begin_analyze_actions(
+        documents=documents,
+        actions=[ExtractKeyPhrasesAction()],
+        show_stats=True
+    )
+    result = poller.result()
+
+    # Retrieve key phrases from the result
+    key_phrases = [phrase for doc in result for action in doc for phrase in action.key_phrases]
+
+    # Use the key phrases in your prompt
+    prompt = f"User asked: {query}. Based on concepts like {key_phrases}, provide a helpful response:"
+
+
+    openai_request = {
+        "prompt": prompt,
+        "max_tokens": 100,
+        "stop": "\n",
+    }
+    
+    response = requests.post("https://ingenuityai.openai.azure.com", headers={"Authorization": f"Bearer {credentials}"}, json=openai_request)
+
+
+    response_json = response.json()
+    gpt_response = response_json["choices"][0]["text"] 
+    chat_box.ai_say(gpt_response)
 
 # init page
 add_title()

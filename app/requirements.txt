@@ -2,3 +2,6 @@ pathlib
 streamlit
 streamlit_chatbox
 loguru
+requests
+azure-cognitiveservices-language_textanalytics
+azure-ai-textanalytics==5.3.0
