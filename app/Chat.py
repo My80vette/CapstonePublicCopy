@@ -31,7 +31,7 @@ def add_title():
 def initlogger():
     logger.configure(
         handlers=[
-            # dict(sink=sys.stderr, format="[{time}][{level}] {message}"),
+            ## dict(sink=sys.stderr, format="[{time}][{level}] {message}"),
             dict(sink="log.txt", format="[{time}][{level}] {message}"),
         ]
     )
@@ -47,11 +47,11 @@ chat_box.init_session()
 chat_box.output_messages()
 if query := st.chat_input("input your question here", key="chatBox"):
 
-    # log input
+    # -log input-
     chat_box.user_say(query)
     logger.info("User sent message: " + query)
 
-    # init client
+    # -init client-
     client = AzureOpenAI(
         api_key="2f8c4fc6fba44228b5a9a268cc579fe5",
         api_version="2023-07-01-preview",
@@ -59,14 +59,15 @@ if query := st.chat_input("input your question here", key="chatBox"):
     )
     deployment_name = "ingenuityGPT"
 
-    # embedding
+    # -embedding-
     embeddings = client.embeddings.create(
         model="ingenuityEmbedder",
         input=query,
         encoding_format="float"
     )
+    ## st.sidebar.write(embeddings.data[0].embedding)
 
-    # get search results
+    # -get search results-
     endpoint = "https://ingenuity-ai-search.search.windows.net/"
     index_name = "vector-1707238357310"
     api_version = "2023-11-01"
@@ -77,20 +78,30 @@ if query := st.chat_input("input your question here", key="chatBox"):
         "api-key": api_key
     }
     params = {
-        "search": query
+        # modify search here
+        "vectorQueries": [
+            {
+                "vector": embeddings.data[0].embedding,
+                "k": 7,
+                "fields": "vector",
+                "kind": "vector",
+                "exhaustive": True
+            }
+        ]
     }
     searchResponse = requests.post(search_url, headers=headers, json=params)
     if searchResponse.status_code == 200:
         search_results = searchResponse.json()
-        # st.sidebar.write(search_results["value"][0])
+        ## st.sidebar.write(search_results["value"][0])
     else:
         st.sidebar.write("Failed to retrieve search results:", searchResponse.text)
-        # st.sidebar.write(searchResponse.status_code)
-    # only use first chunk from result (token reasons)
+        ## st.sidebar.write(searchResponse.status_code)
+    # only use first chunk from result (token reasons)(might need to expand this)
     docs = search_results["value"][0]
 
-    # call AI API
+    # -call AI API-
     prompt = (
+        # prompt engineer here
         f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
     )
     response = client.chat.completions.create(
@@ -98,7 +109,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
         messages=[{"role": "system", "content": prompt}],
     )
 
-    # display response
+    # -display response-
     chat_box.ai_say(response.choices[0].message.content)
 
 # init page
