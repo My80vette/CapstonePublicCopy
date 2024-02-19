@@ -2,4 +2,6 @@ pathlib
 streamlit
 streamlit_chatbox
 loguru
-sys
+requests
+json
+openai
