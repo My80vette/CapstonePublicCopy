@@ -6,6 +6,7 @@ import requests
 from openai import AzureOpenAI
 import json
 
+#TextAnalyticsApiKeyCredential
 
 # app title on sidebar
 def add_title():
@@ -111,6 +112,46 @@ if query := st.chat_input("input your question here", key="chatBox"):
 
     # -display response-
     chat_box.ai_say(response.choices[0].message.content)
+    # # AI API
+    # prompt = (
+    #     f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
+    # )
+
+    input_data = {  
+    "language": "en",  
+    "text": query,  
+    }  
+
+    documents = [{"id": "1", "language": "en", "text": query}]
+    
+    
+    # Extract key phrases
+    poller = client.begin_analyze_actions(
+        documents=documents,
+        actions=[ExtractKeyPhrasesAction()],
+        show_stats=True
+    )
+    result = poller.result()
+
+    # Retrieve key phrases from the result
+    key_phrases = [phrase for doc in result for action in doc for phrase in action.key_phrases]
+
+    # Use the key phrases in your prompt
+    prompt = f"User asked: {query}. Based on concepts like {key_phrases}, provide a helpful response:"
+
+
+    openai_request = {
+        "prompt": prompt,
+        "max_tokens": 100,
+        "stop": "\n",
+    }
+    
+    response = requests.post("https://ingenuityai.openai.azure.com", headers={"Authorization": f"Bearer {credentials}"}, json=openai_request)
+
+
+    response_json = response.json()
+    gpt_response = response_json["choices"][0]["text"] 
+    chat_box.ai_say(gpt_response)
 
 # init page
 add_title()
