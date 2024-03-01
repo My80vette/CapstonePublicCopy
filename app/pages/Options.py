@@ -41,12 +41,13 @@ st.set_page_config(page_title="Options")
 
 # tempurature slider (bindings will use keys and custom session_state fields)
 # (other options may be placed here)
-temperature = st.slider("Response Temperature", 0, 100, 50)
+temperature = st.slider("Response Temperature", 0.00, 2.00, 0.20)
 if "temperature" not in st.session_state:
     st.session_state["temperature"] = temperature
 if temperature != st.session_state.get("temperature"):
     # on-change block
     logger.info("User selected response temperature: " + str(temperature))
+    st.session_state["temperature"] = temperature
 
 # init page
 add_title()
