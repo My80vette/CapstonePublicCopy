@@ -105,16 +105,26 @@ if query := st.chat_input("input your question here", key="chatBox"):
     else:
         callTemperature = st.session_state.get("temperature")
 
-    # -call AI API-
-    prompt = (
+    # update chat memory
+    systemPrompt = (
         # prompt engineer here
-        f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
+        f"Relevant documents: {docs}. Based on these, answer the following user query."
     )
+    if "chatMemory" not in st.session_state:
+        st.session_state["chatMemory"] = []
+    st.session_state["chatMemory"].append({"role": "system", "content": systemPrompt})
+    st.session_state["chatMemory"].append({"role": "user", "content": query})
+
+    # -call AI API-
     response = client.chat.completions.create(
         model=deployment_name,
-        messages=[{"role": "system", "content": prompt}],
+        messages=st.session_state["chatMemory"],
         temperature=callTemperature
     )
+
+    # update chat memory(post-response)
+    del st.session_state["chatMemory"][-2]
+    st.session_state["chatMemory"].append({"role": "assistant", "content": response.choices[0].message.content})
 
     # -display response-
     chat_box.ai_say(response.choices[0].message.content)
