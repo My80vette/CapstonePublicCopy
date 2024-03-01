@@ -69,7 +69,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
 
     # -get search results-
     endpoint = "https://ingenuity-ai-search.search.windows.net/"
-    index_name = "vector-1707238357310"
+    index_name = "vector-1709324901732"
     api_version = "2023-11-01"
     api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
     search_url = f"{endpoint}indexes/{index_name}/docs/search?api-version={api_version}"
