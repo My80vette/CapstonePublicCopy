@@ -99,6 +99,12 @@ if query := st.chat_input("input your question here", key="chatBox"):
     # only use first chunk from result (token reasons)(might need to expand this)
     docs = search_results["value"][0]
 
+    # set temperature (not pipeline-related)
+    if "temperature" not in st.session_state:
+        callTemperature = 0.20
+    else:
+        callTemperature = st.session_state.get("temperature")
+
     # -call AI API-
     prompt = (
         # prompt engineer here
@@ -107,6 +113,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
     response = client.chat.completions.create(
         model=deployment_name,
         messages=[{"role": "system", "content": prompt}],
+        temperature=callTemperature
     )
 
     # -display response-
