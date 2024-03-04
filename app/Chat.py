@@ -105,10 +105,29 @@ if query := st.chat_input("input your question here", key="chatBox"):
     else:
         callTemperature = st.session_state.get("temperature")
 
+    # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
+    instructions = {
+        "style": "proactive",  #  A keyword to remind the model
+        "considerations": [
+            "You are a subject matter expert for the Ingenuity rover and you have all the relevant documentaion to act as such and make informed decisions"
+            "Analyze the situation and potential consequences of the problem.",
+            "If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now",
+            "Explain your reasoning briefly. Think from the user's perspective ('I', 'my')."
+            "Cite the source of your information including the document or snippet to validate your responses"
+            "Emphasize proactive suggestions over immediate actions."
+            "Use conditional language ('if', 'when') to guide the user."
+        ],
+        "example": {
+            "query": "Battery level is at 25%.",
+            "response": "My battery is getting low. I'll continue the current task, but I should start scanning for potential landing zones to ensure a safe return. Based on [document], this is not a critical issue"
+        }
+    }
+
+
     # -call AI API-
     prompt = (
         # prompt engineer here
-        f"Relevant documents: {docs}. Based on these, answer the user query: {query}"
+        f"Relevant documents: {docs}. Based on these, answer the user query: {query}. Craft your responses based on these instructions {instructions}"
     )
     response = client.chat.completions.create(
         model=deployment_name,
