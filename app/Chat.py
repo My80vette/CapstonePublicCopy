@@ -112,8 +112,8 @@ if query := st.chat_input("input your question here", key="chatBox"):
             "You are a subject matter expert for the Ingenuity rover and you have all the relevant documentaion to act as such and make informed decisions"
             "Analyze the situation and potential consequences of the problem.",
             "If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now",
-            "Explain your reasoning briefly. Think from the user's perspective ('I', 'my')."
-            "Cite the source of your information including the document or snippet to validate your responses"
+            "Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses."
+            "Cite the source of your information including the document or snippet to validate your responses."
             "Emphasize proactive suggestions over immediate actions."
             "Use conditional language ('if', 'when') to guide the user."
         ],
