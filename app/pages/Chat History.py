@@ -1,12 +1,11 @@
-from pathlib import Path
 import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger
 # import sys
 
 
-# app title on sidebar
-def add_title():
+# app title on sidebar, remove deploy buttton(mostly)
+def css_fix():
     st.markdown(
         """
         <style>
@@ -18,6 +17,21 @@ def add_title():
                 position: relative;
                 text-decoration: underline;
                 top: 100px;
+            }
+            .reportview-container {
+                margin-top: -2em;
+            }
+            #MainMenu {
+                visibility: hidden;
+            }
+            .stDeployButton {
+                display:none;
+            }
+            footer {
+                visibility: hidden;
+            }
+            #stDecoration {
+                display:none;
             }
         </style>
         """,
@@ -39,11 +53,11 @@ def initlogger():
 # config for this page
 st.set_page_config(page_title="Chat History")
 
-# chat history body
+# chat history (page body)
 st.write("This is the Chat History View")
 
 # init page
-add_title()
+css_fix()
 if "chatHistoryInit" not in st.session_state:
     if "chatInit" in st.session_state:
         del st.session_state["chatInit"]

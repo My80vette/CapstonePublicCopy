@@ -5,3 +5,7 @@ loguru
 requests
 json
 openai
+datetime
+azure.identity
+azure.storage.blob
+os
