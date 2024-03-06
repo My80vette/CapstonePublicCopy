@@ -74,7 +74,7 @@ try:
 
         # -get search results-
         endpoint = "https://ingenuity-ai-search.search.windows.net/"
-        index_name = "vector-123" #"vector-1707238357310" Temp Change to try and generate an error for logging
+        index_name = "vector-1707238357310"
         api_version = "2023-11-01"
         api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
         search_url = f"{endpoint}indexes/{index_name}/docs/search?api-version={api_version}"
