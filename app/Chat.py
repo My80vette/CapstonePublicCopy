@@ -46,7 +46,7 @@ def css_fix():
 
 
 # logger for user actions
-def initlogger():
+def init_logger():
     logger.configure(
         handlers=[
             ## dict(sink=sys.stderr, format="[{time}][{level}] {message}"),
@@ -194,4 +194,4 @@ if "chatInit" not in st.session_state:
         del st.session_state["optionsInit"]
     st.session_state["chatInit"] = True
     logger.remove()
-    initlogger()
+    init_logger()

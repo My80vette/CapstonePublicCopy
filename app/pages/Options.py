@@ -1,7 +1,6 @@
 import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger
-# import sys
 
 
 # app title on sidebar, remove deploy buttton(mostly)
@@ -40,7 +39,7 @@ def css_fix():
 
 
 # logger for user actions
-def initlogger():
+def init_logger():
     logger.configure(
         handlers=[
             # dict(sink=sys.stderr, format="[{time}][{level}] {message}"),
@@ -72,4 +71,4 @@ if "optionsInit" not in st.session_state:
         del st.session_state["chatHistoryInit"]
     st.session_state["optionsInit"] = True
     logger.remove()
-    initlogger()
+    init_logger()
