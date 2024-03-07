@@ -3,6 +3,8 @@ from streamlit_chatbox import *
 from loguru import logger
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+import json
+from datetime import datetime
 
 
 # app title on sidebar, remove deploy buttton(mostly)
@@ -53,22 +55,45 @@ def init_logger():
 
 # get full list of histories (titles, timestamps, message structures)
 def get_history_list(blob_service_client: BlobServiceClient, container_name):
-    # finish comments
+    # initialize history list
     st.session_state["historyList"] = []
-
+    # get list of blob names
     container_client = blob_service_client.get_container_client(
         container=container_name
     )
     blob_list = container_client.list_blobs()
     for blob in blob_list:
-        st.sidebar.write(blob.name)
+        # download blobs
+        blob_client = blob_service_client.get_blob_client(
+            container=container_name, blob=blob.name
+        )
+        downloader = blob_client.download_blob(max_concurrency=1, encoding="UTF-8")
+        blob_text = downloader.readall()
+        # add formatted histories to history list
+        timeStampParse = blob.name.split(".")[0].split("_")
+        dateParse = timeStampParse[0].split("-")
+        timeParse = timeStampParse[1].split("'")
+        blobFields = blob_text.split("\n")
+        st.session_state["historyList"].insert(
+            0,
+            {
+                "title": blobFields[0],
+                "timeStamp": datetime(
+                    int(dateParse[2]),
+                    int(dateParse[0]),
+                    int(dateParse[1]),
+                    int(timeParse[0]),
+                    int(timeParse[1]),
+                    int(timeParse[2]),
+                ),
+                "messages": json.loads(blobFields[2]),
+            },
+        )
+        # st.sidebar.write(st.session_state["historyList"][0]["timeStamp"].strftime("%A %B %d, %Y | %I:%M %p"))
 
 
 # config for this page
 st.set_page_config(page_title="Chat History")
-
-# chat history (page body)
-st.write("This is the Chat History View")
 
 # init page
 css_fix()
@@ -88,3 +113,6 @@ if "chatHistoryInit" not in st.session_state:
             credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
         )
         get_history_list(storageClient, "chat-logs")
+
+# chat history (page body)
+st.write("This is the Chat History View")
