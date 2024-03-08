@@ -111,14 +111,13 @@ if "chatHistoryInit" not in st.session_state:
         get_history_list(storageClient, "chat-logs")
 
 # chat history (page body)
-        
+# get number of rows
 colCount = 3
 displayRows = [st.columns(colCount)]
 for history in st.session_state["historyList"]:
     if (st.session_state["historyList"].index(history) + 1) % colCount == 0:
         displayRows.append(st.columns(colCount))
-# st.sidebar.write(displayRows)
-
+# layout containers
 historyIndex = 0
 for col in sum(displayRows[1:], displayRows[0]):
     if historyIndex < len(st.session_state["historyList"]):
