@@ -117,9 +117,9 @@ if query := st.chat_input("input your question here", key="chatBox"):
             "Emphasize proactive suggestions over immediate actions.",
             "Use conditional language ('if', 'when') to guide the user.",
             "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders like '[specific value]', you are an engineer providing precise technical information.",
-            "When quoting or referencing specific details from a document, use the format [DocumentIndex: <index>] [Details] [/DocumentIndex: <index>] to clearly indicate which details came from which document."
+    
         ],
-        "example_one": {
+        "example": {
             "query": "Battery level is at 25%.",
             "response": "My battery is getting low. I'll continue the current task, but I should start scanning for potential landing zones to ensure a safe return. Based on [document], this is not a critical issue"
         }
