@@ -5,6 +5,7 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 import json
 from datetime import datetime
+from streamlit_modal import Modal
 
 
 # app title on sidebar, remove deploy buttton(mostly)
@@ -111,17 +112,51 @@ if "chatHistoryInit" not in st.session_state:
         get_history_list(storageClient, "chat-logs")
 
 # chat history (page body)
+        
+# setup popup/modal for full history view
+modal = Modal(
+    "Chat History Details",
+    key="chat-history-details",
+    padding=20,
+    max_width=744
+)
+        
 # get number of rows
-colCount = 3
+colCount = 2
 displayRows = [st.columns(colCount)]
 for history in st.session_state["historyList"]:
     if (st.session_state["historyList"].index(history) + 1) % colCount == 0:
         displayRows.append(st.columns(colCount))
+
 # layout containers
 historyIndex = 0
 for col in sum(displayRows[1:], displayRows[0]):
     if historyIndex < len(st.session_state["historyList"]):
-        tile = col.container(border=True, height=252)
+        # individual tiles for each history
+        tile = col.container(border=True, height=225)
         tile.subheader(st.session_state["historyList"][historyIndex]["title"], divider="red")
         tile.write(st.session_state["historyList"][historyIndex]["timeStamp"].strftime("%A %B %d, %Y | %I:%M %p"))
+        # open modal button
+        if tile.button("View Chat :eye-in-speech-bubble:", key=historyIndex):
+            logger.info("User opened chat history from " + st.session_state["historyList"][historyIndex]["timeStamp"].strftime("%A %B %d, %Y | %I:%M %p"))
+            st.session_state["selectedHistoryIndex"] = historyIndex
+            modal.open()
     historyIndex += 1
+
+# details modal content
+if modal.is_open():
+    with modal.container():
+        # title and timestamp
+        selectedTitle = st.session_state["historyList"][st.session_state["selectedHistoryIndex"]]["title"]
+        selectedTimeStamp = st.session_state["historyList"][st.session_state["selectedHistoryIndex"]]["timeStamp"].strftime("%A %B %d, %Y | %I:%M %p")
+        st.write(selectedTitle + " | " + selectedTimeStamp)
+        # loop through messages
+        history_box = ChatBox(session_key="history-chat")
+        history_box.init_session()
+        history_box.output_messages()
+        for message in st.session_state["historyList"][st.session_state["selectedHistoryIndex"]]["messages"]:
+            if message["role"] == "user":
+                history_box.user_say(message["content"])
+            elif message["role"] == "assistant":
+                history_box.ai_say(message["content"])
+        history_box.reset_history()
