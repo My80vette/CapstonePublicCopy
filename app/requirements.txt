@@ -3,9 +3,9 @@ streamlit
 streamlit_chatbox
 loguru
 requests
-json
 openai
 datetime
 azure.identity
 azure.storage.blob
 os
+json
