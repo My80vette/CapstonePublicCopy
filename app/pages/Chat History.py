@@ -33,9 +33,6 @@ def css_fix():
             footer {
                 visibility: hidden;
             }
-            #stDecoration {
-                display:none;
-            }
         </style>
         """,
         unsafe_allow_html=True,
@@ -89,7 +86,6 @@ def get_history_list(blob_service_client: BlobServiceClient, container_name):
                 "messages": json.loads(blobFields[2]),
             },
         )
-        # st.sidebar.write(st.session_state["historyList"][0]["timeStamp"].strftime("%A %B %d, %Y | %I:%M %p"))
 
 
 # config for this page
@@ -115,4 +111,18 @@ if "chatHistoryInit" not in st.session_state:
         get_history_list(storageClient, "chat-logs")
 
 # chat history (page body)
-st.write("This is the Chat History View")
+        
+colCount = 3
+displayRows = [st.columns(colCount)]
+for history in st.session_state["historyList"]:
+    if (st.session_state["historyList"].index(history) + 1) % colCount == 0:
+        displayRows.append(st.columns(colCount))
+# st.sidebar.write(displayRows)
+
+historyIndex = 0
+for col in sum(displayRows[1:], displayRows[0]):
+    if historyIndex < len(st.session_state["historyList"]):
+        tile = col.container(border=True, height=252)
+        tile.subheader(st.session_state["historyList"][historyIndex]["title"], divider="red")
+        tile.write(st.session_state["historyList"][historyIndex]["timeStamp"].strftime("%A %B %d, %Y | %I:%M %p"))
+    historyIndex += 1

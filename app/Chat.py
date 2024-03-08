@@ -36,9 +36,6 @@ def css_fix():
             footer {
                 visibility: hidden;
             }
-            #stDecoration {
-                display:none;
-            }
         </style>
         """,
         unsafe_allow_html=True,
@@ -57,14 +54,14 @@ def init_logger():
 
 
 # file upload(chat history only currently)(potentially multipurpose for logging)
-def upload_blob_file(blob_service_client: BlobServiceClient, container_name: str, filename: str):
+def upload_blob_file(
+    blob_service_client: BlobServiceClient, container_name: str, filename: str
+):
     container_client = blob_service_client.get_container_client(
         container=container_name
     )
     with open(file=os.path.join(".\\", filename), mode="rb") as data:
-        container_client.upload_blob(
-            name=filename, data=data, overwrite=True
-        )
+        container_client.upload_blob(name=filename, data=data, overwrite=True)
 
 
 # config for this page
@@ -161,8 +158,11 @@ if query := st.chat_input("input your question here", key="chatBox"):
         st.session_state["timeStamp"] = datetime.now().strftime("%m-%d-%Y_%H'%M'%S")
         # chat title creation (breif description for viewing conveniece)
         getTitlePrompt = [
-            {"role": "system", "content": "The following is the first prompt from a user to an LLM in a chat. Provide a title for this chat in 4 words or less."},
-            st.session_state["chatMemory"][0]
+            {
+                "role": "system",
+                "content": "The following is the first prompt from a user to an LLM in a chat. Provide a title for this chat in 4 words or less, without punctuation, maximum of 15 characters per word.",
+            },
+            st.session_state["chatMemory"][0],
         ]
         titleResponse = client.chat.completions.create(
             model=deployment_name,
@@ -178,9 +178,11 @@ if query := st.chat_input("input your question here", key="chatBox"):
     # upload to blob storage
     storageClient = BlobServiceClient(
         account_url="https://ingenuitycontextstorage.blob.core.windows.net/",
-        credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w=="
+        credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
     )
-    upload_blob_file(storageClient, "chat-logs", (st.session_state["timeStamp"] + ".txt"))
+    upload_blob_file(
+        storageClient, "chat-logs", (st.session_state["timeStamp"] + ".txt")
+    )
     # delete local file
     os.unlink(st.session_state["timeStamp"] + ".txt")
 

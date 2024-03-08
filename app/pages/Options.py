@@ -29,9 +29,6 @@ def css_fix():
             footer {
                 visibility: hidden;
             }
-            #stDecoration {
-                display:none;
-            }
         </style>
         """,
         unsafe_allow_html=True,
