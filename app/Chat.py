@@ -1,12 +1,17 @@
-from pathlib import Path
 import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger
 import requests
 from openai import AzureOpenAI
+from datetime import datetime
 import json
-# app title on sidebar
-def add_title():
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+import os
+
+
+# app title on sidebar, remove deploy buttton(mostly)
+def css_fix():
     st.markdown(
         """
         <style>
@@ -19,12 +24,24 @@ def add_title():
                 text-decoration: underline;
                 top: 100px;
             }
+            .reportview-container {
+                margin-top: -2em;
+            }
+            #MainMenu {
+                visibility: hidden;
+            }
+            .stDeployButton {
+                display:none;
+            }
+            footer {
+                visibility: hidden;
+            }
         </style>
         """,
         unsafe_allow_html=True,
     )
 # logger for user actions
-def initlogger():
+def init_logger():
     logger.configure(
         handlers=[
             ## dict(sink=sys.stderr, format="[{time}][{level}] {message}"),
@@ -32,9 +49,23 @@ def initlogger():
         ]
     )
     logger.info("User selected chat view")
+
+
+# file upload(chat history only currently)(potentially multipurpose for logging)
+def upload_blob_file(
+    blob_service_client: BlobServiceClient, container_name: str, filename: str
+):
+    container_client = blob_service_client.get_container_client(
+        container=container_name
+    )
+    with open(file=os.path.join(".\\", filename), mode="rb") as data:
+        container_client.upload_blob(name=filename, data=data, overwrite=True)
+
+
 # config for this page
 st.set_page_config(page_title="Chat")
-# simple chat box structure
+
+# simple chat box structure (page body)
 chat_box = ChatBox()
 chat_box.init_session()
 chat_box.output_messages()
@@ -51,9 +82,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
     deployment_name = "ingenuityGPT"
     # -embedding-
     embeddings = client.embeddings.create(
-        model="ingenuityEmbedder",
-        input=query,
-        encoding_format="float"
+        model="ingenuityEmbedder", input=query, encoding_format="float"
     )
     ## st.sidebar.write(embeddings.data[0].embedding)
     # -get search results-
@@ -62,10 +91,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
     api_version = "2023-11-01"
     api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
     search_url = f"{endpoint}indexes/{index_name}/docs/search?api-version={api_version}"
-    headers = {
-        "Content-Type": "application/json",
-        "api-key": api_key
-    }
+    headers = {"Content-Type": "application/json", "api-key": api_key}
     params = {
         # modify search here
         "vectorQueries": [
@@ -74,7 +100,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
                 "k": 7,
                 "fields": "vector",
                 "kind": "vector",
-                "exhaustive": True
+                "exhaustive": True,
             }
         ]
     }
@@ -94,6 +120,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
         callTemperature = 0.20
     else:
         callTemperature = st.session_state.get("temperature")
+
     # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
     instructions = {
         "style": "proactive",  #  A keyword to remind the model
@@ -108,20 +135,70 @@ if query := st.chat_input("input your question here", key="chatBox"):
             "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders like '[specific value]', you are an engineer providing precise technical information."
         ]
     }
-    # -call AI API-
-    prompt = (
+    
+    # update chat memory
+    systemPrompt = (
         # prompt engineer here
-        f"Relevant documents: {docs}. Based on these, answer the user query: {query}. Craft your responses based on these instructions {instructions}"
+        f"Relevant documents: {docs}. Based on these, answer the following user query. Craft your responses based on these instructions {instructions}"
     )
+    if "chatMemory" not in st.session_state:
+        st.session_state["chatMemory"] = []
+    st.session_state["chatMemory"].append({"role": "system", "content": systemPrompt})
+    st.session_state["chatMemory"].append({"role": "user", "content": query})
+
+    # -call AI API-
     response = client.chat.completions.create(
         model=deployment_name,
-        messages=[{"role": "system", "content": prompt}],
-        temperature=callTemperature
+        messages=st.session_state["chatMemory"],
+        temperature=callTemperature,
     )
     # -display response-
     chat_box.ai_say(response.choices[0].message.content)
+
+    # update chat memory(post-response)
+    del st.session_state["chatMemory"][-2]
+    st.session_state["chatMemory"].append(
+        {"role": "assistant", "content": response.choices[0].message.content}
+    )
+
+    # save chat history(after each response)
+    
+    # timestamp and title only on first message
+    if "timeStamp" not in st.session_state:
+        st.session_state["timeStamp"] = datetime.now().strftime("%m-%d-%Y_%H'%M'%S")
+        # chat title creation (breif description for viewing conveniece)
+        getTitlePrompt = [
+            {
+                "role": "system",
+                "content": "The following is the first prompt from a user to an LLM in a chat. Provide a title for this chat in 4 words or less, without punctuation, maximum of 15 characters per word.",
+            },
+            st.session_state["chatMemory"][0],
+        ]
+        titleResponse = client.chat.completions.create(
+            model=deployment_name,
+            messages=getTitlePrompt,
+            temperature=0.20,
+        )
+        st.session_state["aiChatTitle"] = titleResponse.choices[0].message.content
+    # write to local file
+    stringChat = json.dumps(st.session_state["chatMemory"], separators=(",", ":"))
+    f = open(st.session_state["timeStamp"] + ".txt", "a")
+    f.write(st.session_state["aiChatTitle"] + "\n\n" + stringChat)
+    f.close()
+    # upload to blob storage
+    storageClient = BlobServiceClient(
+        account_url="https://ingenuitycontextstorage.blob.core.windows.net/",
+        credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
+    )
+    upload_blob_file(
+        storageClient, "chat-logs", (st.session_state["timeStamp"] + ".txt")
+    )
+    # delete local file
+    os.unlink(st.session_state["timeStamp"] + ".txt")
+
+
 # init page
-add_title()
+css_fix()
 if "chatInit" not in st.session_state:
     if "chatHistoryInit" in st.session_state:
         del st.session_state["chatHistoryInit"]
@@ -129,4 +206,4 @@ if "chatInit" not in st.session_state:
         del st.session_state["optionsInit"]
     st.session_state["chatInit"] = True
     logger.remove()
-    initlogger()
+    init_logger()

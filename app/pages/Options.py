@@ -1,12 +1,10 @@
-from pathlib import Path
 import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger
-# import sys
 
 
-# app title on sidebar
-def add_title():
+# app title on sidebar, remove deploy buttton(mostly)
+def css_fix():
     st.markdown(
         """
         <style>
@@ -19,6 +17,18 @@ def add_title():
                 text-decoration: underline;
                 top: 100px;
             }
+            .reportview-container {
+                margin-top: -2em;
+            }
+            #MainMenu {
+                visibility: hidden;
+            }
+            .stDeployButton {
+                display:none;
+            }
+            footer {
+                visibility: hidden;
+            }
         </style>
         """,
         unsafe_allow_html=True,
@@ -26,7 +36,7 @@ def add_title():
 
 
 # logger for user actions
-def initlogger():
+def init_logger():
     logger.configure(
         handlers=[
             # dict(sink=sys.stderr, format="[{time}][{level}] {message}"),
@@ -39,7 +49,7 @@ def initlogger():
 # config for this page
 st.set_page_config(page_title="Options")
 
-# tempurature slider (bindings will use keys and custom session_state fields)
+# tempurature slider (page body) 
 # (other options may be placed here)
 temperature = st.slider("Response Temperature", 0.00, 2.00, 0.20)
 if "temperature" not in st.session_state:
@@ -50,7 +60,7 @@ if temperature != st.session_state.get("temperature"):
     st.session_state["temperature"] = temperature
 
 # init page
-add_title()
+css_fix()
 if "optionsInit" not in st.session_state:
     if "chatInit" in st.session_state:
         del st.session_state["chatInit"]
@@ -58,4 +68,4 @@ if "optionsInit" not in st.session_state:
         del st.session_state["chatHistoryInit"]
     st.session_state["optionsInit"] = True
     logger.remove()
-    initlogger()
+    init_logger()
