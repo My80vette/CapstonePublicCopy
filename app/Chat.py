@@ -4,6 +4,7 @@ from loguru import logger as loguruLogger
 import requests
 from openai import AzureOpenAI
 from datetime import datetime
+from datetime import datetime
 import json
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
@@ -37,12 +38,22 @@ def css_fix():
             footer {
                 visibility: hidden;
             }
+            .reportview-container {
+                margin-top: -2em;
+            }
+            #MainMenu {
+                visibility: hidden;
+            }
+            .stDeployButton {
+                display:none;
+            }
+            footer {
+                visibility: hidden;
+            }
         </style>
         """,
         unsafe_allow_html=True,
     )
-
-
 # logger for user actions
 def init_logger():
     loguruLogger.configure(
