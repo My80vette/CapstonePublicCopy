@@ -96,8 +96,8 @@ if query := st.chat_input("input your question here", key="chatBox"):
     else:
         st.sidebar.write("Failed to retrieve search results:", searchResponse.text)
         ## st.sidebar.write(searchResponse.status_code)
-    # only use first chunk from result (token reasons)(might need to expand this)
-    docs = search_results["value"][0]
+    # Trying to get all of the documents to the bot so it can reference every doc it uses
+    docs = ". ".join([doc["content"] for doc in search_results["value"]])
 
     # set temperature (not pipeline-related)
     if "temperature" not in st.session_state:
@@ -109,14 +109,15 @@ if query := st.chat_input("input your question here", key="chatBox"):
     instructions = {
         "style": "proactive",  #  A keyword to remind the model
         "considerations": [
-            "You are a subject matter expert for the Ingenuity rover and you have all the relevant documentaion to act as such and make informed decisions"
+            "You are a subject matter expert for the Ingenuity rover and you have all the relevant documentation to act as such and make informed decisions",
             "Analyze the situation and potential consequences of the problem.",
             "If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now",
-            "Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses."
-            "Cite each document you use at the end of the response so we know where you are pulling information from, every document you used to formulate a response"
-            "Emphasize proactive suggestions over immediate actions."
-            "Use conditional language ('if', 'when') to guide the user."
-            "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize, you are an engineer."
+            "Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.",
+            "Cite each document you use at the end of the response so we know where you are pulling information from, every document you used to formulate a response",
+            "Emphasize proactive suggestions over immediate actions.",
+            "Use conditional language ('if', 'when') to guide the user.",
+            "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders like '[specific value]', you are an engineer providing precise technical information.",
+            "When quoting or referencing specific details from a document, use the format [DocumentIndex: <index>] [Details] [/DocumentIndex: <index>] to clearly indicate which details came from which document."
         ],
         "example_one": {
             "query": "Battery level is at 25%.",
@@ -128,7 +129,7 @@ if query := st.chat_input("input your question here", key="chatBox"):
     # -call AI API-
     prompt = (
         # prompt engineer here
-        f"Relevant documents: {docs}. Based on these, answer the user query: {query}. Craft your responses based on these instructions {instructions}"
+        f"Relevant documents: {json.dumps(search_results['value'])}. Based on these, answer the user query: {query}. Craft your responses based on these instructions {instructions}"
     )
     response = client.chat.completions.create(
         model=deployment_name,
@@ -138,6 +139,40 @@ if query := st.chat_input("input your question here", key="chatBox"):
 
     # -display response-
     chat_box.ai_say(response.choices[0].message.content)
+
+#NEW BELOW
+# Parse the model's response to extract the citations and display the response with appropriate citations
+response_text = response.choices[0].message.content
+parts = []
+current_part = ""
+current_doc_index = None
+in_doc_quote = False
+
+for line in response_text.split("\n"):
+    if line.startswith("[DocumentIndex:"):
+        if current_part:
+            parts.append((current_part, current_doc_index))
+        current_part = ""
+        current_doc_index = int(line.split(":")[1].strip()[:-1])
+        in_doc_quote = True
+    elif line.startswith("[/DocumentIndex:"):
+        in_doc_quote = False
+    else:
+        if in_doc_quote:
+            current_part += line + "\n"
+        else:
+            current_part += line + "\n"
+
+if current_part:
+    parts.append((current_part, current_doc_index))
+
+for part, doc_index in parts:
+    chat_box.ai_say(part)
+    if doc_index is not None:
+        chat_box.ai_say(f"[Document citation: {search_results['value'][doc_index]['metadata_storage_path']}]")
+
+
+#NEW ABOVE
 
 # init page
 add_title()
