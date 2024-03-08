@@ -5,8 +5,6 @@ from loguru import logger
 import requests
 from openai import AzureOpenAI
 import json
-
-
 # app title on sidebar
 def add_title():
     st.markdown(
@@ -25,8 +23,6 @@ def add_title():
         """,
         unsafe_allow_html=True,
     )
-
-
 # logger for user actions
 def initlogger():
     logger.configure(
@@ -36,21 +32,16 @@ def initlogger():
         ]
     )
     logger.info("User selected chat view")
-
-
 # config for this page
 st.set_page_config(page_title="Chat")
-
 # simple chat box structure
 chat_box = ChatBox()
 chat_box.init_session()
 chat_box.output_messages()
 if query := st.chat_input("input your question here", key="chatBox"):
-
     # -log input-
     chat_box.user_say(query)
     logger.info("User sent message: " + query)
-
     # -init client-
     client = AzureOpenAI(
         api_key="2f8c4fc6fba44228b5a9a268cc579fe5",
@@ -58,7 +49,6 @@ if query := st.chat_input("input your question here", key="chatBox"):
         azure_endpoint="https://ingenuityai.openai.azure.com/",
     )
     deployment_name = "ingenuityGPT"
-
     # -embedding-
     embeddings = client.embeddings.create(
         model="ingenuityEmbedder",
@@ -66,7 +56,6 @@ if query := st.chat_input("input your question here", key="chatBox"):
         encoding_format="float"
     )
     ## st.sidebar.write(embeddings.data[0].embedding)
-
     # -get search results-
     endpoint = "https://ingenuity-ai-search.search.windows.net/"
     index_name = "vector-1707238357310"
@@ -96,84 +85,45 @@ if query := st.chat_input("input your question here", key="chatBox"):
     else:
         st.sidebar.write("Failed to retrieve search results:", searchResponse.text)
         ## st.sidebar.write(searchResponse.status_code)
-    # Trying to get all of the documents to the bot so it can reference every doc it uses
-    docs = ". ".join([doc["content"] for doc in search_results["value"]])
+    # only use first chunk from result (token reasons)(might need to expand this)
+    docs = search_results["value"][0]
 
+    
     # set temperature (not pipeline-related)
     if "temperature" not in st.session_state:
         callTemperature = 0.20
     else:
         callTemperature = st.session_state.get("temperature")
-
     # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
     instructions = {
         "style": "proactive",  #  A keyword to remind the model
         "considerations": [
-            "You are a subject matter expert for the Ingenuity rover and you have all the relevant documentation to act as such and make informed decisions",
+            "You are a subject matter expert for the Ingenuity rover and you have all the relevant documentaion to act as such and make informed decisions"
             "Analyze the situation and potential consequences of the problem.",
             "If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now",
-            "Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.",
-            "Cite each document you use at the end of the response so we know where you are pulling information from, every document you used to formulate a response",
-            "Emphasize proactive suggestions over immediate actions.",
-            "Use conditional language ('if', 'when') to guide the user.",
-            "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders like '[specific value]', you are an engineer providing precise technical information.",
-    
+            "Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses."
+            "Cite each document you use at the end of the response so we know where you are pulling information from, every document you used to formulate a response"
+            "Emphasize proactive suggestions over immediate actions."
+            "Use conditional language ('if', 'when') to guide the user."
+            "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize, you are an engineer."
         ],
-        "example": {
+        "example_one": {
             "query": "Battery level is at 25%.",
             "response": "My battery is getting low. I'll continue the current task, but I should start scanning for potential landing zones to ensure a safe return. Based on [document], this is not a critical issue"
         }
     }
-
-
     # -call AI API-
     prompt = (
         # prompt engineer here
-        f"Relevant documents: {json.dumps(search_results['value'])}. Based on these, answer the user query: {query}. Craft your responses based on these instructions {instructions}"
+        f"Relevant documents: {docs}. Based on these, answer the user query: {query}. Craft your responses based on these instructions {instructions}"
     )
     response = client.chat.completions.create(
         model=deployment_name,
         messages=[{"role": "system", "content": prompt}],
         temperature=callTemperature
     )
-
     # -display response-
     chat_box.ai_say(response.choices[0].message.content)
-
-#NEW BELOW
-# Parse the model's response to extract the citations and display the response with appropriate citations
-response_text = response.choices[0].message.content
-parts = []
-current_part = ""
-current_doc_index = None
-in_doc_quote = False
-
-for line in response_text.split("\n"):
-    if line.startswith("[DocumentIndex:"):
-        if current_part:
-            parts.append((current_part, current_doc_index))
-        current_part = ""
-        current_doc_index = int(line.split(":")[1].strip()[:-1])
-        in_doc_quote = True
-    elif line.startswith("[/DocumentIndex:"):
-        in_doc_quote = False
-    else:
-        if in_doc_quote:
-            current_part += line + "\n"
-        else:
-            current_part += line + "\n"
-
-if current_part:
-    parts.append((current_part, current_doc_index))
-
-for part, doc_index in parts:
-    chat_box.ai_say(part)
-    if doc_index is not None:
-        chat_box.ai_say(f"[Document citation: {search_results['value'][doc_index]['metadata_storage_path']}]")
-
-
-#NEW ABOVE
-
 # init page
 add_title()
 if "chatInit" not in st.session_state:
