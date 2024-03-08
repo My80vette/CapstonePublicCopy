@@ -4,5 +4,9 @@ streamlit_chatbox
 loguru
 requests
 openai
-azure.storage.blob
 datetime
+azure.identity
+azure.storage.blob
+os
+json
+logger
