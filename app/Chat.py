@@ -97,10 +97,16 @@ try:
             azure_endpoint="https://ingenuityai.openai.azure.com/",
         )
         deployment_name = "ingenuityGPT"
-        # -embedding-
-        embeddings = client.embeddings.create(
-            model="ingenuityEmbedder", input=query, encoding_format="float"
-        )
+        # Error catching for generating embeddings
+        try:
+            # -embedding-
+            embeddings = client.embeddings.create(
+                model="ingenuityEmbedder", input=query, encoding_format="float"
+            )
+        except Exception as e:
+            logger.error(f'An error occurred while generating embeddings: {e}')
+            upload_error_log(logs_container_client)
+            chat_box.ai_say("An error occured while generating embeddings, this could mean you are exceeding the maximum token length allowed, please try again or shorten your query. For more information, refer to the error-logs")
         ## st.sidebar.write(embeddings.data[0].embedding)
         # -get search results-
         endpoint = "https://ingenuity-ai-search.search.windows.net/"
@@ -162,13 +168,20 @@ try:
             st.session_state["chatMemory"] = []
         st.session_state["chatMemory"].append({"role": "system", "content": systemPrompt})
         st.session_state["chatMemory"].append({"role": "user", "content": query})
-
-        # -call AI API-
-        response = client.chat.completions.create(
-            model=deployment_name,
-            messages=st.session_state["chatMemory"],
-            temperature=callTemperature,
-        )
+        # Monitor for errors in response generation
+        try:
+            # -call AI API-
+            response = client.chat.completions.create(
+                model=deployment_name,
+                messages=st.session_state["chatMemory"],
+                temperature=callTemperature,
+            )
+        # Handle the error and log it or display the response
+        except RateLimitError as e:
+            logger.error(f'Rate limit exceeded: {e}')
+            upload_error_log(logs_container_client)
+            # Tell the user they exceeded the limit (May remove, good for testing)
+            chat_box.ai_say("API call failed, likely rate limit exceeded. Please try again later.")
         # -display response-
         chat_box.ai_say(response.choices[0].message.content)
 
@@ -191,12 +204,19 @@ try:
                 },
                 st.session_state["chatMemory"][0],
             ]
-            titleResponse = client.chat.completions.create(
-                model=deployment_name,
-                messages=getTitlePrompt,
-                temperature=0.20,
-            )
-            st.session_state["aiChatTitle"] = titleResponse.choices[0].message.content
+            # Check for errors when generating a title
+            try:
+                titleResponse = client.chat.completions.create(
+                    model=deployment_name,
+                    messages=getTitlePrompt,
+                    temperature=0.20,
+                )
+                st.session_state["aiChatTitle"] = titleResponse.choices[0].message.content
+            # Handle the error or assign a title
+            except Exception as e:
+                logger.error(f'An error occurred while generating chat title: {e}')
+                upload_error_log(logs_container_client)
+                chat_box.ai_say("An error occured while trying to generate a chat title, please try again")
         # write to local file
         stringChat = json.dumps(st.session_state["chatMemory"], separators=(",", ":"))
         f = open(st.session_state["timeStamp"] + ".txt", "a")
@@ -225,7 +245,8 @@ try:
         loguruLogger.remove()
         init_logger()
 
-# If an error occurs above (anywhere after site initialization) we will log it.
+# This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 except Exception as e:
     logger.error(f'An error occurred: {e}')
     upload_error_log(logs_container_client)
+    chat_box.ai_say("An unexpected error has occured, please refer to the error logs for more information")
