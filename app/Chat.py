@@ -107,7 +107,7 @@ try:
         except Exception as e:
             logger.error(f'An error occurred while generating embeddings: {e}')
             upload_error_log(logs_container_client)
-            chat_box.ai_say("An error occured while generating embeddings, this could mean you are exceeding the maximum token length allowed, please try again or shorten your query. For more information, refer to the error-logs")
+            chat_box.ai_say("An error occured while generating embeddings, this could mean that you are exceeding the maximum token length allowed, please try again or shorten your query. For more information, refer to the error-logs")
         ## st.sidebar.write(embeddings.data[0].embedding)
         # -get search results-
         endpoint = "https://ingenuity-ai-search.search.windows.net/"
