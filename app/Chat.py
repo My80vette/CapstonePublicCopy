@@ -131,11 +131,10 @@ try:
         searchResponse = requests.post(search_url, headers=headers, json=params)
         if searchResponse.status_code == 200:
             search_results = searchResponse.json()
-            ## st.sidebar.write(search_results["value"][0])
         else:
             st.sidebar.write("Failed to retrieve search results:", searchResponse.text)
-            ## st.sidebar.write(searchResponse.status_code)
-        # only use first chunk from result (token reasons)(might need to expand this)
+        
+        #store doc title and excerpt for citing 
         doc_info = []
         
         for doc in search_results["value"]:
@@ -173,7 +172,6 @@ try:
         systemPrompt = "Relevant document information:\n\n"
         for idx, doc in enumerate(doc_info, start=1):
             systemPrompt += f"Title: {doc['title']}\nExcerpt: {doc['excerpt']}\n\n"
-        #Document {idx}:\n
         systemPrompt += f"Based on the above information, answer the following user query. Craft your responses based on these instructions: {instructions}\n\nCite the title of the used documents {{}}"
 
         if "chatMemory" not in st.session_state:
@@ -198,14 +196,6 @@ try:
         docs_cited = ", ".join(docs_used)
         final_response = response.choices[0].message.content.format(docs_cited)
         chat_box.ai_say(final_response)
-
-
-
-        # -display response-
-        #chat_box.ai_say(response.choices[0].message.content)
-
-
-
 
         # update chat memory(post-response)
         del st.session_state["chatMemory"][-2]
