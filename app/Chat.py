@@ -10,6 +10,7 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 import os
 from log_setup import logger, upload_error_log, logs_container_client
+from openai import RateLimitError
 
 
 # app title on sidebar, remove deploy buttton(mostly)
@@ -110,7 +111,7 @@ try:
         ## st.sidebar.write(embeddings.data[0].embedding)
         # -get search results-
         endpoint = "https://ingenuity-ai-search.search.windows.net/"
-        index_name = "vector-1707238357310"
+        index_name = "vector-1709324901732"
         api_version = "2023-11-01"
         api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
         search_url = f"{endpoint}indexes/{index_name}/docs/search?api-version={api_version}"
@@ -135,8 +136,16 @@ try:
             st.sidebar.write("Failed to retrieve search results:", searchResponse.text)
             ## st.sidebar.write(searchResponse.status_code)
         # only use first chunk from result (token reasons)(might need to expand this)
-        docs = search_results["value"][0]
+        doc_info = []
+        
+        for doc in search_results["value"]:
+            title = doc["title"]
+            excerpt = doc["chunk"] # this field SHOULD hold the data given by AiSearch
+            doc_info.append({"title": title, "excerpt": excerpt})
 
+        docs_used = []
+        for doc in doc_info:
+            docs_used.append(doc['title'])
 
         # set temperature (not pipeline-related)
         if "temperature" not in st.session_state:
@@ -152,18 +161,21 @@ try:
                 "Analyze the situation and potential consequences of the problem.",
                 "If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now",
                 "Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.",
-                "Cite each document you use at the end of the response so we know where you are pulling information from, every document you used to formulate a response",
+                "At the end of each response, create a newline then cite your source, including the document title where the information came from",
+                "If you recieve a multi-part question that involves multiple subsystems, pick the relevant info from each document, then cite them all, dont use just one document per response",
                 "Emphasize proactive suggestions over immediate actions.",
                 "Use conditional language ('if', 'when') to guide the user.",
-                "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders like '[specific value]', you are an engineer providing precise technical information."
+                "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information."
             ]
         }
         
         # update chat memory
-        systemPrompt = (
-            # prompt engineer here
-            f"Relevant documents: {docs}. Based on these, answer the following user query. Craft your responses based on these instructions {instructions}"
-        )
+        systemPrompt = "Relevant document information:\n\n"
+        for idx, doc in enumerate(doc_info, start=1):
+            systemPrompt += f"Title: {doc['title']}\nExcerpt: {doc['excerpt']}\n\n"
+        #Document {idx}:\n
+        systemPrompt += f"Based on the above information, answer the following user query. Craft your responses based on these instructions: {instructions}\n\nCite the title of the used documents {{}}"
+
         if "chatMemory" not in st.session_state:
             st.session_state["chatMemory"] = []
         st.session_state["chatMemory"].append({"role": "system", "content": systemPrompt})
@@ -182,8 +194,18 @@ try:
             upload_error_log(logs_container_client)
             # Tell the user they exceeded the limit (May remove, good for testing)
             chat_box.ai_say("API call failed, likely rate limit exceeded. Please try again later.")
+        
+        docs_cited = ", ".join(docs_used)
+        final_response = response.choices[0].message.content.format(docs_cited)
+        chat_box.ai_say(final_response)
+
+
+
         # -display response-
-        chat_box.ai_say(response.choices[0].message.content)
+        #chat_box.ai_say(response.choices[0].message.content)
+
+
+
 
         # update chat memory(post-response)
         del st.session_state["chatMemory"][-2]
