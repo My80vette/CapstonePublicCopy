@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_chatbox import *
 from loguru import logger as loguruLogger
 from log_setup import logger, upload_error_log, logs_container_client
-
+from streamlit_modal import Modal
 
 # Error handling
 try:
@@ -50,11 +50,19 @@ try:
         loguruLogger.info("User selected options view")
 
 
-        # config for this page
-        st.set_page_config(page_title="Options")
+    # config for this page
+    st.set_page_config(page_title="Options")
 
-    # tempurature slider (page body) 
-    # (other options may be placed here)
+    # options (page body) 
+
+    # setup popup/modal for full history view
+    modal = Modal(
+        "Debug Log",
+        key="debugModal",
+        padding=20,
+        max_width=744
+    )
+
     temperature = st.slider("Response Temperature", 0.00, 2.00, 0.20)
     if "temperature" not in st.session_state:
         st.session_state["temperature"] = temperature
@@ -62,6 +70,16 @@ try:
         # on-change block
         loguruLogger.info("User selected response temperature: " + str(temperature))
         st.session_state["temperature"] = temperature
+
+    # open debug log button
+    st.divider()
+    if st.button("View Debug Log", key="showDebug"):
+        loguruLogger.info("User opened debug log")
+        modal.open()
+    if modal.is_open():
+        with modal.container():
+            st.write("test")
+            # read log file(s), display in readonly textarea
 
     # init page
     css_fix()
