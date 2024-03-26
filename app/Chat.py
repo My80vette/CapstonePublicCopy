@@ -55,6 +55,8 @@ def css_fix():
         """,
         unsafe_allow_html=True,
     )
+
+
 # logger for user actions
 def init_logger():
     loguruLogger.configure(
@@ -66,15 +68,17 @@ def init_logger():
     loguruLogger.info("User selected chat view")
 
 
-# file upload(chat history only currently)(potentially multipurpose for logging)
-def upload_blob_file(
-    blob_service_client: BlobServiceClient, container_name: str, filename: str
+# blob upload(chat history only currently)(potentially multipurpose for logging)
+def upload_blob_stream(
+    blob_service_client: BlobServiceClient,
+    container_name: str,
+    file_name: str,
+    input_stream: str,
 ):
-    container_client = blob_service_client.get_container_client(
-        container=container_name
+    blob_client = blob_service_client.get_blob_client(
+        container=container_name, blob=(file_name + ".txt")
     )
-    with open(file=os.path.join(".\\", filename), mode="rb") as data:
-        container_client.upload_blob(name=filename, data=data, overwrite=True)
+    blob_client.upload_blob(input_stream, blob_type="BlockBlob")
 
 
 # config for this page
@@ -105,16 +109,20 @@ try:
                 model="ingenuityEmbedder", input=query, encoding_format="float"
             )
         except Exception as e:
-            logger.error(f'An error occurred while generating embeddings: {e}')
+            logger.error(f"An error occurred while generating embeddings: {e}")
             upload_error_log(logs_container_client)
-            chat_box.ai_say("An error occured while generating embeddings, this could mean that you are exceeding the maximum token length allowed, please try again or shorten your query. For more information, refer to the error-logs")
+            chat_box.ai_say(
+                "An error occured while generating embeddings, this could mean that you are exceeding the maximum token length allowed, please try again or shorten your query. For more information, refer to the error-logs"
+            )
         ## st.sidebar.write(embeddings.data[0].embedding)
         # -get search results-
         endpoint = "https://ingenuity-ai-search.search.windows.net/"
         index_name = "vector-1709324901732"
         api_version = "2023-11-01"
         api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
-        search_url = f"{endpoint}indexes/{index_name}/docs/search?api-version={api_version}"
+        search_url = (
+            f"{endpoint}indexes/{index_name}/docs/search?api-version={api_version}"
+        )
         headers = {"Content-Type": "application/json", "api-key": api_key}
         params = {
             # modify search here
@@ -133,18 +141,18 @@ try:
             search_results = searchResponse.json()
         else:
             st.sidebar.write("Failed to retrieve search results:", searchResponse.text)
-        
-        #store doc title and excerpt for citing 
+
+        # store doc title and excerpt for citing
         doc_info = []
-        
+
         for doc in search_results["value"]:
             title = doc["title"]
-            excerpt = doc["chunk"] # this field SHOULD hold the data given by AiSearch
+            excerpt = doc["chunk"]  # this field SHOULD hold the data given by AiSearch
             doc_info.append({"title": title, "excerpt": excerpt})
 
         docs_used = []
         for doc in doc_info:
-            docs_used.append(doc['title'])
+            docs_used.append(doc["title"])
 
         # set temperature (not pipeline-related)
         if "temperature" not in st.session_state:
@@ -164,10 +172,10 @@ try:
                 "If you recieve a multi-part question that involves multiple subsystems, pick the relevant info from each document, then cite them all, dont use just one document per response",
                 "Emphasize proactive suggestions over immediate actions.",
                 "Use conditional language ('if', 'when') to guide the user.",
-                "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information."
-            ]
+                "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information.",
+            ],
         }
-        
+
         # update chat memory
         systemPrompt = "Relevant document information:\n\n"
         for idx, doc in enumerate(doc_info, start=1):
@@ -176,7 +184,9 @@ try:
 
         if "chatMemory" not in st.session_state:
             st.session_state["chatMemory"] = []
-        st.session_state["chatMemory"].append({"role": "system", "content": systemPrompt})
+        st.session_state["chatMemory"].append(
+            {"role": "system", "content": systemPrompt}
+        )
         st.session_state["chatMemory"].append({"role": "user", "content": query})
         # Monitor for errors in response generation
         try:
@@ -188,11 +198,13 @@ try:
             )
         # Handle the error and log it or display the response
         except RateLimitError as e:
-            logger.error(f'Rate limit exceeded: {e}')
+            logger.error(f"Rate limit exceeded: {e}")
             upload_error_log(logs_container_client)
             # Tell the user they exceeded the limit (May remove, good for testing)
-            chat_box.ai_say("API call failed, likely rate limit exceeded. Please try again later.")
-        
+            chat_box.ai_say(
+                "API call failed, likely rate limit exceeded. Please try again later."
+            )
+
         docs_cited = ", ".join(docs_used)
         final_response = response.choices[0].message.content.format(docs_cited)
         chat_box.ai_say(final_response)
@@ -204,7 +216,7 @@ try:
         )
 
         # save chat history(after each response)
-        
+
         # timestamp and title only on first message
         if "timeStamp" not in st.session_state:
             st.session_state["timeStamp"] = datetime.now().strftime("%m-%d-%Y_%H'%M'%S")
@@ -223,28 +235,27 @@ try:
                     messages=getTitlePrompt,
                     temperature=0.20,
                 )
-                st.session_state["aiChatTitle"] = titleResponse.choices[0].message.content
+                st.session_state["aiChatTitle"] = titleResponse.choices[
+                    0
+                ].message.content
             # Handle the error or assign a title
             except Exception as e:
-                logger.error(f'An error occurred while generating chat title: {e}')
+                logger.error(f"An error occurred while generating chat title: {e}")
                 upload_error_log(logs_container_client)
-                chat_box.ai_say("An error occured while trying to generate a chat title, please try again")
-        # write to local file
-        stringChat = json.dumps(st.session_state["chatMemory"], separators=(",", ":"))
-        f = open(st.session_state["timeStamp"] + ".txt", "a")
-        f.write(st.session_state["aiChatTitle"] + "\n\n" + stringChat)
-        f.close()
+                chat_box.ai_say(
+                    "An error occured while trying to generate a chat title, please try again"
+                )
+
         # upload to blob storage
+        stringChat = json.dumps(st.session_state["chatMemory"], separators=(",", ":"))
+        titledChat = st.session_state["aiChatTitle"] + "\n\n" + stringChat
         storageClient = BlobServiceClient(
             account_url="https://ingenuitycontextstorage.blob.core.windows.net/",
             credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
         )
-        upload_blob_file(
-            storageClient, "chat-logs", (st.session_state["timeStamp"] + ".txt")
+        upload_blob_stream(
+            storageClient, "chat-logs", (st.session_state["timeStamp"] + ".txt"), titledChat
         )
-        # delete local file
-        os.unlink(st.session_state["timeStamp"] + ".txt")
-
 
     # init page
     css_fix()
@@ -259,6 +270,8 @@ try:
 
 # This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 except Exception as e:
-    logger.error(f'An error occurred: {e}')
+    logger.error(f"An error occurred: {e}")
     upload_error_log(logs_container_client)
-    chat_box.ai_say("An unexpected error has occured, please refer to the error logs for more information")
+    chat_box.ai_say(
+        "An unexpected error has occured, please refer to the error logs for more information"
+    )
