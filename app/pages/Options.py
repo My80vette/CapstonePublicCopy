@@ -57,12 +57,13 @@ try:
 
     # setup popup/modal for full history view
     modal = Modal(
-        "Debug Log",
+        "Debug Logs",
         key="debugModal",
         padding=20,
         max_width=744
     )
 
+    # temp slider
     temperature = st.slider("Response Temperature", 0.00, 2.00, 0.20)
     if "temperature" not in st.session_state:
         st.session_state["temperature"] = temperature
@@ -71,15 +72,32 @@ try:
         loguruLogger.info("User selected response temperature: " + str(temperature))
         st.session_state["temperature"] = temperature
 
-    # open debug log button
+    # view debug log 
     st.divider()
-    if st.button("View Debug Log", key="showDebug"):
+    if st.button("View Debug Logs", key="showDebug"):
         loguruLogger.info("User opened debug log")
         modal.open()
     if modal.is_open():
         with modal.container():
-            st.write("test")
-            # read log file(s), display in readonly textarea
+            f = open("log.txt", "r")
+            currentDebug = f.read()
+            f.close()
+            f = open("error.log", "r")
+            currentError = f.read()
+            f.close()
+            st.text_area(
+                "Debug Log",
+                currentDebug,
+                disabled=True,
+                height=400
+            )
+            st.text_area(
+                "Error Log",
+                currentError,
+                disabled=True,
+                height=400
+            )
+
 
     # init page
     css_fix()
