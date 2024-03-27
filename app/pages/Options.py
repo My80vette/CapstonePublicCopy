@@ -98,6 +98,15 @@ try:
                 height=400
             )
 
+    # editable prompt
+    st.divider()
+    st.text_area(
+        "Edit AI Prompt",
+        "test",
+        height=300
+    )
+    st.sidebar.write(st.session_state)
+
 
     # init page
     css_fix()
