@@ -100,12 +100,22 @@ try:
 
     # editable prompt
     st.divider()
-    st.text_area(
+    # lengthy, strangely formatted default value will be removed to a separate file in a future ticket (temp slider bug fix)(check comments on ticket)
+    if "promptingInstructions" not in st.session_state:
+        st.session_state["promptingInstructions"] = """You are a subject matter expert for the Ingenuity rover and you have all the relevant documentation to act as such and make informed decisions.
+Analyze the situation and potential consequences of the problem.
+If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now.
+Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.
+At the end of each response, create a newline then cite your source, including the document title where the information came from.
+If you receive a multi-part question that involves multiple subsystems, pick the relevant info from each document, then cite them all, don't use just one document per response.
+Emphasize proactive suggestions over immediate actions.
+Use conditional language ('if', 'when') to guide the user.
+When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information."""
+    st.session_state["promptingInstructions"] = st.text_area(
         "Edit AI Prompt",
-        "test",
+        st.session_state["promptingInstructions"],
         height=300
     )
-    st.sidebar.write(st.session_state)
 
 
     # init page
