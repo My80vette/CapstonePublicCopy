@@ -72,6 +72,37 @@ try:
         loguruLogger.info("User selected response temperature: " + str(temperature))
         st.session_state["temperature"] = temperature
 
+    # Dark/Light Mode Toggle
+    st.divider()
+    ms = st.session_state
+    if "themes" not in ms: 
+        ms.themes = {"current_theme": "dark",
+                    "refreshed": True,
+                    "light": {"theme.base": "dark",
+                              "button_face": "Toggle Dark Mode"},
+                    "dark":  {"theme.base": "light",
+                              "button_face": "Toggle Light Mode"},
+                    }
+  
+
+    def ChangeTheme():
+        previous_theme = ms.themes["current_theme"]
+        tdict = ms.themes["light"] if ms.themes["current_theme"] == "light" else ms.themes["dark"]
+        for vkey, vval in tdict.items(): 
+            if vkey.startswith("theme"): st._config.set_option(vkey, vval)
+
+        ms.themes["refreshed"] = False
+        if previous_theme == "dark": ms.themes["current_theme"] = "light"
+        elif previous_theme == "light": ms.themes["current_theme"] = "dark"
+
+
+    btn_face = ms.themes["light"]["button_face"] if ms.themes["current_theme"] == "light" else ms.themes["dark"]["button_face"]
+    st.button(btn_face, on_click=ChangeTheme)
+
+    if ms.themes["refreshed"] == False:
+        ms.themes["refreshed"] = True
+        st.rerun()
+
     # view debug log 
     st.divider()
     if st.button("View Debug Logs", key="showDebug"):
