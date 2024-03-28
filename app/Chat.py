@@ -160,28 +160,26 @@ try:
         else:
             callTemperature = st.session_state.get("temperature")
 
+        # Prompt engineering
         # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
-        instructions = {
-            "style": "proactive",  #  A keyword to remind the model
-            "considerations": [
-                "You are a subject matter expert for the Ingenuity rover and you have all the relevant documentation to act as such and make informed decisions",
-                "Analyze the situation and potential consequences of the problem.",
-                "If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now",
-                "Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.",
-                "At the end of each response, create a newline then cite your source, including the document title where the information came from",
-                "If you recieve a multi-part question that involves multiple subsystems, pick the relevant info from each document, then cite them all, dont use just one document per response",
-                "Emphasize proactive suggestions over immediate actions.",
-                "Use conditional language ('if', 'when') to guide the user.",
-                "When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information.",
-            ],
-        }
-
-        # update chat memory
+        # lengthy, strangely formatted default value will be removed to a separate file in a future ticket (temp slider bug fix)(check comments on ticket)
+        if "promptingInstructions" not in st.session_state:
+            st.session_state["promptingInstructions"] = """You are a subject matter expert for the Ingenuity mars helicopter and you have all the relevant documentation to act as such and make informed decisions.
+Analyze the situation and potential consequences of the problem.
+If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now.
+Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.
+At the end of each response, create a newline then cite your source, including the document title where the information came from.
+If you receive a multi-part question that involves multiple subsystems, pick the relevant info from each document, then cite them all, don't use just one document per response.
+Emphasize proactive suggestions over immediate actions.
+Use conditional language ('if', 'when') to guide the user.
+When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information."""
+            
         systemPrompt = "Relevant document information:\n\n"
         for idx, doc in enumerate(doc_info, start=1):
             systemPrompt += f"Title: {doc['title']}\nExcerpt: {doc['excerpt']}\n\n"
-        systemPrompt += f"Based on the above information, answer the following user query. Craft your responses based on these instructions: {instructions}\n\nCite the title of the used documents {{}}"
+        systemPrompt += "Based on the above information, answer the following user query. Craft your responses based on these instructions: " + st.session_state["promptingInstructions"] + "\n\nCite the title of the used documents."
 
+        # update chat memory
         if "chatMemory" not in st.session_state:
             st.session_state["chatMemory"] = []
         st.session_state["chatMemory"].append(
@@ -254,7 +252,10 @@ try:
             credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
         )
         upload_blob_stream(
-            storageClient, "chat-logs", (st.session_state["timeStamp"] + ".txt"), titledChat
+            storageClient,
+            "chat-logs",
+            (st.session_state["timeStamp"] + ".txt"),
+            titledChat,
         )
 
     # init page
