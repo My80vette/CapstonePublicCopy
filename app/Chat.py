@@ -173,8 +173,7 @@ try:
                 Emphasize proactive suggestions over immediate actions when possible, unless there is a need to execute a GO/NOGO decision or a FLY/LAND_NOW Decision
                 Use conditional language ('if', 'when') to guide the user.
                 When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders or vague ranges, you are an engineer providing precise technical information.
-                When asked to return specific numbers, measurements, or frequencies, refer to the documents and give exact answers based on that provided information, do not shorten, condense, or change given information from the documents
-                If 2 documents with the same title are used, but one has '-end' before the filetype, only cite the first document and ignore the second one, do the same when '(1)' is at the end before the filetype"""
+                When asked to return specific numbers, measurements, or frequencies, refer to the documents and give exact answers based on that provided information, do not shorten, condense, or change given information from the documents"""
             
         systemPrompt = "Relevant document information:\n\n"
         for idx, doc in enumerate(doc_info, start=1):
