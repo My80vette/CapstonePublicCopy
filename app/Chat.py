@@ -4,13 +4,13 @@ from loguru import logger as loguruLogger
 import requests
 from openai import AzureOpenAI
 from datetime import datetime
-from datetime import datetime
 import json
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 import os
 from log_setup import logger, upload_error_log, logs_container_client
 from openai import RateLimitError
+import pytz 
 
 
 # app title on sidebar, remove deploy buttton(mostly)
@@ -217,7 +217,7 @@ When asked to explain a system or topic, return specifics including numbers, uni
 
         # timestamp and title only on first message
         if "timeStamp" not in st.session_state:
-            st.session_state["timeStamp"] = datetime.now().strftime("%m-%d-%Y_%H'%M'%S")
+            st.session_state["timeStamp"] = datetime.now(pytz.timezone('US/Pacific')).strftime("%m-%d-%Y_%H'%M'%S")
             # chat title creation (breif description for viewing conveniece)
             getTitlePrompt = [
                 {
