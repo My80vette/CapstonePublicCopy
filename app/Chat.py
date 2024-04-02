@@ -164,19 +164,20 @@ try:
         # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
         # lengthy, strangely formatted default value will be removed to a separate file in a future ticket (temp slider bug fix)(check comments on ticket)
         if "promptingInstructions" not in st.session_state:
-            st.session_state["promptingInstructions"] = """You are a subject matter expert for the Ingenuity mars helicopter and you have all the relevant documentation to act as such and make informed decisions.
-Analyze the situation and potential consequences of the problem.
-If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now.
-Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.
-At the end of each response, create a newline then cite your source, including the document title where the information came from.
-If you receive a multi-part question that involves multiple subsystems, pick the relevant info from each document, then cite them all, don't use just one document per response.
-Emphasize proactive suggestions over immediate actions.
-Use conditional language ('if', 'when') to guide the user.
-When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information."""
+            st.session_state["promptingInstructions"] = """You are a subject matter expert for the Ingenuity Helicopter and you have all the relevant documentation to act as such and make informed decisions
+                Analyze the situation and potential consequences of the problem.
+                If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now
+                Explain your reasoning briefly. Use First person perspective
+                If you recieve a multi-part question that involves multiple subsystems, use as many documents as you need to get all of the specifics
+                Emphasize proactive suggestions over immediate actions when possible, unless there is a need to execute a GO/NOGO decision or a FLY/LAND_NOW Decision
+                Use conditional language ('if', 'when') to guide the user.
+                When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders or vague ranges, you are an engineer providing precise technical information.
+                When asked to return specific numbers, measurements, or frequencies, refer to the documents and give exact answers based on that provided information, do not shorten, condense, or change given information from the documents
+                If 2 documents with the same title are used, but one has '-end' before the filetype, only cite the first document and ignore the second one, do the same when '(1)' is at the end before the filetype"""
             
         systemPrompt = "Relevant document information:\n\n"
         for idx, doc in enumerate(doc_info, start=1):
-            systemPrompt += f"Title: {doc['title']}\nExcerpt: {doc['excerpt']}\n\n"
+            systemPrompt += f"{doc['title']}\nExcerpt: {doc['excerpt']}\n\n"
         systemPrompt += "Based on the above information, answer the following user query. Craft your responses based on these instructions: " + st.session_state["promptingInstructions"] + "\n\nCite the title of the used documents."
 
         # update chat memory
@@ -200,8 +201,9 @@ When asked to explain a system or topic, return specifics including numbers, uni
             upload_error_log(logs_container_client)
             # Tell the user they exceeded the limit (May remove, good for testing)
             chat_box.ai_say(
-                "API call failed, likely rate limit exceeded. Please try again later."
+                "An unexpected error has occurred while generating the response. You may have exceeded the maximum token length, please try again or shorten your query. For more information, please refer to the error logs."
             )
+
 
         docs_cited = ", ".join(docs_used)
         final_response = response.choices[0].message.content.format(docs_cited)
