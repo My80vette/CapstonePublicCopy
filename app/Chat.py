@@ -1,16 +1,18 @@
-import json
-import os
-import pytz
-import requests
-from azure.identity import DefaultAzureCredential
-from azure.mgmt.resource.resources import ResourceManagementClient
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-from datetime import datetime
-from log_setup import logger, upload_error_log, logs_container_client
-from loguru import logger as loguruLogger
-from openai import AzureOpenAI, RateLimitError
-from streamlit import st
+import streamlit as st
 from streamlit_chatbox import *
+from streamlit_option_menu import option_menu
+from loguru import logger as loguruLogger
+import requests
+from openai import AzureOpenAI
+from datetime import datetime
+import json
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+import os
+from log_setup import logger, upload_error_log, logs_container_client
+from openai import RateLimitError
+import pytz 
+from azure.mgmt.resource.resources import ResourceManagementClientx
 
 
 # app title on sidebar, remove deploy buttton(mostly)
