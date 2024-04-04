@@ -294,36 +294,6 @@ Analyze the following situation and the potential consequences of it. If there i
                 
                 del st.session_state["timeStamp"]
 
-    # init page
-    css_fix()
-    if "chatInit" not in st.session_state:
-        if "chatHistoryInit" in st.session_state:
-            del st.session_state["chatHistoryInit"]
-        if "optionsInit" in st.session_state:
-            del st.session_state["optionsInit"]
-        st.session_state["chatInit"] = True
-        loguruLogger.remove()
-        init_logger()
-        
-    client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id="d68e4e7f-00e7-4d29-91e2-ccf35ca58e79")    
-    deployment = client.deployments.get(resource_group_name="ingenuityAI", deployment_name="ingenuityGPT")
-    deployment_status = deployment.properties.provisioning_state
-    
-    if deployment_status == "Succeeded":
-        st.success('All systems are functional', icon="🟩")
-    elif deployment_status == "Failed":
-        st.error('There has been a backend failure', icon="🟥")
-
-    try:
-            # -call AI API-
-        response = client.chat.completions.create(
-            model="ingenuityGPT"
-        )
-        # Handle the error and log it or display the response
-    except RateLimitError as e:
-        st.warning('Rate limit has been exceeded', icon="🟨")
-# This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
-
 # This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 except Exception as e:
     error_message = f"An unexpected error has occured: {e}"
