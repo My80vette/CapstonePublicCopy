@@ -186,33 +186,32 @@ try:
                 # tempurature (default)
                 callTemperature = 0.20
                 # prompt (default)
-                promptingInstructions = """You are a subject matter expert for the Ingenuity mars helicopter and you have all the relevant documentation to act as such and make informed decisions.
-Analyze the situation and potential consequences of the problem.
-If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now.
-Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.
-At the end of each response, create a newline then cite your source, including the document title where the information came from.
-If you receive a multi-part question that involves multiple subsystems, pick the relevant info from each document, then cite them all, don't use just one document per response.
-Emphasize proactive suggestions over immediate actions.
-Use conditional language ('if', 'when') to guide the user.
-When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information."""
+                promptingInstructions = """You are a subject matter expert for the Ingenuity Mars Helicopter, and you have all the relevant documentation to act as such and make informed decisions. You are providing expert advice to Jet Propulsion Laboratory operators.
+
+Your guidelines are: Explain your reasoning briefly, use first person perspective, use clear and concise language, use conditional language where useful, always use specific numbers and units, cite the names of all documents you used, and emphasize immediate actions and proactive suggestions. If you receive a question with multiple parts, use and cite as many documents as you need. If you are asked to explain a system or topic, always return specific numbers, units, and ranges.
+
+Analyze the following situation and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the situation is dangerous, and likely to cause damage to Ingenuity, then state Ingenuity must land now along with the reason."""
             else:
                 # tempurature (custom)
                 callTemperature = st.session_state["loadedOptions"][0]
                 # prompt (custom)
                 promptingInstructions = st.session_state["loadedOptions"][1]
 
-            systemPrompt = "Relevant document information:\n\n"
+            # prep doc excerpts
+            passedDocsString = ""
             for idx, doc in enumerate(doc_info, start=1):
-                systemPrompt += f"Title: {doc['title']}\nExcerpt: {doc['excerpt']}\n\n"
-            systemPrompt += "Based on the above information, answer the following user query. Craft your responses based on these instructions: " + promptingInstructions + "\n\nCite the title of the used documents."
+                passedDocsString += f"Title: {doc['title']}\nExcerpt: {doc['excerpt']}\n\n"
 
-            # update chat memory
+            # update chat memory (BUILDING MESSAGE STRUCTURE TO BE SENT)
             if "chatMemory" not in st.session_state:
                 st.session_state["chatMemory"] = []
-            st.session_state["chatMemory"].append(
-                {"role": "system", "content": systemPrompt}
-            )
+            st.session_state["chatMemory"].append({"role": "system", "content": promptingInstructions})
+            st.session_state["chatMemory"].append({"role": "system", "content": "Here is the user’s question:"})
             st.session_state["chatMemory"].append({"role": "user", "content": query})
+            st.session_state["chatMemory"].append({"role": "system", "content": "Here are excerpts from documents you should use to aid your response:"})
+            st.session_state["chatMemory"].append({"role": "system", "content": passedDocsString})
+            st.session_state["chatMemory"].append({"role": "system", "content": "Cite the name of all of the documents you used to aid your response."})
+
             # Monitor for errors in response generation
             try:
                 # -call AI API-
@@ -237,7 +236,11 @@ When asked to explain a system or topic, return specifics including numbers, uni
                 chat_box.ai_say(final_response)
 
                 # update chat memory(post-response)
+                del st.session_state["chatMemory"][-6]
+                del st.session_state["chatMemory"][-5]
+                del st.session_state["chatMemory"][-3]
                 del st.session_state["chatMemory"][-2]
+                del st.session_state["chatMemory"][-1]
                 st.session_state["chatMemory"].append(
                     {"role": "assistant", "content": response.choices[0].message.content}
                 )
@@ -290,16 +293,16 @@ When asked to explain a system or topic, return specifics including numbers, uni
                 
                 del st.session_state["timeStamp"]
 
-            # init page
-            css_fix()
-            if "chatInit" not in st.session_state:
-                if "chatHistoryInit" in st.session_state:
-                    del st.session_state["chatHistoryInit"]
-                if "optionsInit" in st.session_state:
-                    del st.session_state["optionsInit"]
-                st.session_state["chatInit"] = True
-                loguruLogger.remove()
-                init_logger()
+    # init page
+    css_fix()
+    if "chatInit" not in st.session_state:
+        if "chatHistoryInit" in st.session_state:
+            del st.session_state["chatHistoryInit"]
+        if "optionsInit" in st.session_state:
+            del st.session_state["optionsInit"]
+        st.session_state["chatInit"] = True
+        loguruLogger.remove()
+        init_logger()
 
 # This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 except Exception as e:
