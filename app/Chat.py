@@ -12,7 +12,7 @@ import os
 from log_setup import logger, upload_error_log, logs_container_client
 from openai import RateLimitError
 import pytz 
-from azure.mgmt.resource.resources import ResourceManagementClientx
+from azure.mgmt.resource.resources import ResourceManagementClient
 
 
 # app title on sidebar, remove deploy buttton(mostly)
