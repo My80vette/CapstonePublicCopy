@@ -9,9 +9,9 @@ from datetime import datetime
 from log_setup import logger, upload_error_log, logs_container_client
 from loguru import logger as loguruLogger
 from openai import AzureOpenAI, RateLimitError
-from streamlit import option_menu, st
+from streamlit import st
 from streamlit_chatbox import *
-from streamlit_option_menu import option_menu
+
 
 # app title on sidebar, remove deploy buttton(mostly)
 def css_fix():
