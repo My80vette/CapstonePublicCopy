@@ -14,6 +14,7 @@ from openai import RateLimitError
 import pytz 
 from azure.mgmt.resource.resources import ResourceManagementClient
 
+
 # app title on sidebar, remove deploy buttton(mostly)
 def css_fix():
     st.markdown(
