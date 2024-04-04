@@ -1,5 +1,6 @@
 import streamlit as st
 from streamlit_chatbox import *
+from streamlit_option_menu import option_menu
 from loguru import logger as loguruLogger
 import requests
 from openai import AzureOpenAI
