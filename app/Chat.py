@@ -122,64 +122,71 @@ try:
         )
         deployment_name = "ingenuityGPT"
         # Error catching for generating embeddings
+        continue_execution = True
         try:
             # -embedding-
             embeddings = client.embeddings.create(
                 model="ingenuityEmbedder", input=query, encoding_format="float"
             )
         except Exception as e:
+            error_message = f"An error occurred while generating embeddings: {e}"
             logger.error(f"An error occurred while generating embeddings: {e}")
-            upload_error_log(logs_container_client)
+            upload_error_log(logs_container_client, error_message)
             chat_box.ai_say(
-                "An error occured while generating embeddings, this could mean that you are exceeding the maximum token length allowed, please try again or shorten your query. For more information, refer to the error-logs"
+                "An unexpected error has occurred while generating the response. You may have exceeded the maximum token length, please try again or shorten your query. For more information, please refer to the error logs."
             )
+            continue_execution = False
         ## st.sidebar.write(embeddings.data[0].embedding)
-        # -get search results-
-        endpoint = "https://ingenuity-ai-search.search.windows.net/"
-        index_name = "vector-1709324901732"
-        api_version = "2023-11-01"
-        api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
-        search_url = (
-            f"{endpoint}indexes/{index_name}/docs/search?api-version={api_version}"
-        )
-        headers = {"Content-Type": "application/json", "api-key": api_key}
-        params = {
-            # modify search here
-            "vectorQueries": [
-                {
-                    "vector": embeddings.data[0].embedding,
-                    "k": 7,
-                    "fields": "vector",
-                    "kind": "vector",
-                    "exhaustive": True,
-                }
-            ]
-        }
-        searchResponse = requests.post(search_url, headers=headers, json=params)
-        if searchResponse.status_code == 200:
-            search_results = searchResponse.json()
-        else:
-            st.sidebar.write("Failed to retrieve search results:", searchResponse.text)
+        if continue_execution:
+            # -get search results-
+            endpoint = "https://ingenuity-ai-search.search.windows.net/"
+            index_name = "vector-1709324901732"
+            api_version = "2023-11-01"
+            api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
+            search_url = (
+                f"{endpoint}indexes/{index_name}/docs/search?api-version={api_version}"
+            )
+            headers = {"Content-Type": "application/json", "api-key": api_key}
+            params = {
+                # modify search here
+                "vectorQueries": [
+                    {
+                        "vector": embeddings.data[0].embedding,
+                        "k": 7,
+                        "fields": "vector",
+                        "kind": "vector",
+                        "exhaustive": True,
+                    }
+                ]
+            }
+            searchResponse = requests.post(search_url, headers=headers, json=params)
+            if searchResponse.status_code == 200:
+                search_results = searchResponse.json()
+            else:
+                st.sidebar.write("Failed to retrieve search results:", searchResponse.text)
 
-        # store doc title and excerpt for citing
-        doc_info = []
+            # store doc title and excerpt for citing
+            doc_info = []
 
-        for doc in search_results["value"]:
-            title = doc["title"]
-            excerpt = doc["chunk"]  # this field SHOULD hold the data given by AiSearch
-            doc_info.append({"title": title, "excerpt": excerpt})
+            for doc in search_results["value"]:
+                title = doc["title"]
+                excerpt = doc["chunk"]  # this field SHOULD hold the data given by AiSearch
+                doc_info.append({"title": title, "excerpt": excerpt})
 
-        docs_used = []
-        for doc in doc_info:
-            docs_used.append(doc["title"])
+            docs_used = []
+            for doc in doc_info:
+                docs_used.append(doc["title"])
 
-        # set options-controlled values (temperature / prompt instructions)
-        # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
-        if "loadedOptions" not in st.session_state:
-            # tempurature (default)
-            callTemperature = 0.20
-            # prompt (default)
-            promptingInstructions = """You are a subject matter expert for the Ingenuity mars helicopter and you have all the relevant documentation to act as such and make informed decisions.
+            # set ai chat title empty value
+            st.session_state["aiChatTitle"] = ""
+            
+            # set options-controlled values (temperature / prompt instructions)
+            # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
+            if "loadedOptions" not in st.session_state:
+                # tempurature (default)
+                callTemperature = 0.20
+                # prompt (default)
+                promptingInstructions = """You are a subject matter expert for the Ingenuity mars helicopter and you have all the relevant documentation to act as such and make informed decisions.
 Analyze the situation and potential consequences of the problem.
 If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now.
 Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.
@@ -188,111 +195,117 @@ If you receive a multi-part question that involves multiple subsystems, pick the
 Emphasize proactive suggestions over immediate actions.
 Use conditional language ('if', 'when') to guide the user.
 When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information."""
-        else:
-            # tempurature (custom)
-            callTemperature = st.session_state["loadedOptions"][0]
-            # prompt (custom)
-            promptingInstructions = st.session_state["loadedOptions"][1]
+            else:
+                # tempurature (custom)
+                callTemperature = st.session_state["loadedOptions"][0]
+                # prompt (custom)
+                promptingInstructions = st.session_state["loadedOptions"][1]
 
-        systemPrompt = "Relevant document information:\n\n"
-        for idx, doc in enumerate(doc_info, start=1):
-            systemPrompt += f"Title: {doc['title']}\nExcerpt: {doc['excerpt']}\n\n"
-        systemPrompt += "Based on the above information, answer the following user query. Craft your responses based on these instructions: " + promptingInstructions + "\n\nCite the title of the used documents."
+            systemPrompt = "Relevant document information:\n\n"
+            for idx, doc in enumerate(doc_info, start=1):
+                systemPrompt += f"Title: {doc['title']}\nExcerpt: {doc['excerpt']}\n\n"
+            systemPrompt += "Based on the above information, answer the following user query. Craft your responses based on these instructions: " + promptingInstructions + "\n\nCite the title of the used documents."
 
-        # update chat memory
-        if "chatMemory" not in st.session_state:
-            st.session_state["chatMemory"] = []
-        st.session_state["chatMemory"].append(
-            {"role": "system", "content": systemPrompt}
-        )
-        st.session_state["chatMemory"].append({"role": "user", "content": query})
-        # Monitor for errors in response generation
-        try:
-            # -call AI API-
-            response = client.chat.completions.create(
-                model=deployment_name,
-                messages=st.session_state["chatMemory"],
-                temperature=callTemperature,
+            # update chat memory
+            if "chatMemory" not in st.session_state:
+                st.session_state["chatMemory"] = []
+            st.session_state["chatMemory"].append(
+                {"role": "system", "content": systemPrompt}
             )
-        # Handle the error and log it or display the response
-        except RateLimitError as e:
-            logger.error(f"Rate limit exceeded: {e}")
-            upload_error_log(logs_container_client)
-            # Tell the user they exceeded the limit (May remove, good for testing)
-            chat_box.ai_say(
-                "API call failed, likely rate limit exceeded. Please try again later."
-            )
-
-        docs_cited = ", ".join(docs_used)
-        final_response = response.choices[0].message.content.format(docs_cited)
-        chat_box.ai_say(final_response)
-
-        # update chat memory(post-response)
-        del st.session_state["chatMemory"][-2]
-        st.session_state["chatMemory"].append(
-            {"role": "assistant", "content": response.choices[0].message.content}
-        )
-
-        # save chat history(after each response)
-
-        # timestamp and title only on first message
-        if "timeStamp" not in st.session_state:
-            st.session_state["timeStamp"] = datetime.now(pytz.timezone('US/Pacific')).strftime("%m-%d-%Y_%H'%M'%S")
-            # chat title creation (breif description for viewing conveniece)
-            getTitlePrompt = [
-                {
-                    "role": "system",
-                    "content": "The following is the first prompt from a user to an LLM in a chat. Provide a title for this chat in 4 words or less, without punctuation, maximum of 15 characters per word.",
-                },
-                st.session_state["chatMemory"][0],
-            ]
-            # Check for errors when generating a title
+            st.session_state["chatMemory"].append({"role": "user", "content": query})
+            # Monitor for errors in response generation
             try:
-                titleResponse = client.chat.completions.create(
+                # -call AI API-
+                response = client.chat.completions.create(
                     model=deployment_name,
-                    messages=getTitlePrompt,
-                    temperature=0.20,
+                    messages=st.session_state["chatMemory"],
+                    temperature=callTemperature,
                 )
-                st.session_state["aiChatTitle"] = titleResponse.choices[
-                    0
-                ].message.content
-            # Handle the error or assign a title
-            except Exception as e:
-                logger.error(f"An error occurred while generating chat title: {e}")
-                upload_error_log(logs_container_client)
+            # Handle the error and log it or display the response
+            except RateLimitError as e:
+                error_message = f"Rate limit exceeded: {e}"
+                logger.error(f"Rate limit exceeded: {e}")
+                upload_error_log(logs_container_client, error_message)
                 chat_box.ai_say(
-                    "An error occured while trying to generate a chat title, please try again"
+                    "An error has occurred while generating the response due to exceeding the rate limit. Please try again in one minute. For more information, please refer to the error logs."
+                )
+                continue_execution = False
+
+            if continue_execution:
+                docs_cited = ", ".join(docs_used)
+                final_response = response.choices[0].message.content.format(docs_cited)
+                chat_box.ai_say(final_response)
+
+                # update chat memory(post-response)
+                del st.session_state["chatMemory"][-2]
+                st.session_state["chatMemory"].append(
+                    {"role": "assistant", "content": response.choices[0].message.content}
                 )
 
-        # upload to blob storage
-        stringChat = json.dumps(st.session_state["chatMemory"], separators=(",", ":"))
-        titledChat = st.session_state["aiChatTitle"] + "\n\n" + stringChat
-        storageClient = BlobServiceClient(
-            account_url="https://ingenuitycontextstorage.blob.core.windows.net/",
-            credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
-        )
-        upload_blob_stream(
-            storageClient,
-            "chat-logs",
-            (st.session_state["timeStamp"] + ".txt"),
-            titledChat,
-        )
+                # save chat history(after each response)
 
-    # init page
-    css_fix()
-    if "chatInit" not in st.session_state:
-        if "chatHistoryInit" in st.session_state:
-            del st.session_state["chatHistoryInit"]
-        if "optionsInit" in st.session_state:
-            del st.session_state["optionsInit"]
-        st.session_state["chatInit"] = True
-        loguruLogger.remove()
-        init_logger()
+                # timestamp and title only on first message
+                if "timeStamp" not in st.session_state:
+                    st.session_state["timeStamp"] = datetime.now(pytz.timezone('US/Pacific')).strftime("%m-%d-%Y_%H'%M'%S")
+                    # chat title creation (breif description for viewing conveniece)
+                    getTitlePrompt = [
+                        {
+                            "role": "system",
+                            "content": "The following is the first prompt from a user to an LLM in a chat. Provide a title for this chat in 4 words or less, without punctuation, maximum of 15 characters per word.",
+                        },
+                        st.session_state["chatMemory"][0],
+                    ]
+                    # Check for errors when generating a title
+                    try:
+                        titleResponse = client.chat.completions.create(
+                            model=deployment_name,
+                            messages=getTitlePrompt,
+                            temperature=0.20,
+                        )
+                        st.session_state["aiChatTitle"] = titleResponse.choices[
+                            0
+                        ].message.content
+                    # Handle the error or assign a title
+                    except Exception as e:
+                        # error_message = f"An error occurred while generating chat title: {e}"
+                        # logger.error(f"An error occurred while generating chat title: {e}")
+                        # upload_error_log(logs_container_client, error_message)
+                        chat_box.ai_say(
+                            "An error occured while trying to generate a chat title, please try again"
+                        )
+
+                # upload to blob storage
+                stringChat = json.dumps(st.session_state["chatMemory"], separators=(",", ":"))
+                titledChat = st.session_state["aiChatTitle"] + "\n\n" + stringChat
+                storageClient = BlobServiceClient(
+                    account_url="https://ingenuitycontextstorage.blob.core.windows.net/",
+                    credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
+                )
+                upload_blob_stream(
+                    storageClient,
+                    "chat-logs",
+                    (st.session_state["timeStamp"] + ".txt"),
+                    titledChat,
+                )
+                
+                del st.session_state["timeStamp"]
+
+            # init page
+            css_fix()
+            if "chatInit" not in st.session_state:
+                if "chatHistoryInit" in st.session_state:
+                    del st.session_state["chatHistoryInit"]
+                if "optionsInit" in st.session_state:
+                    del st.session_state["optionsInit"]
+                st.session_state["chatInit"] = True
+                loguruLogger.remove()
+                init_logger()
 
 # This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 except Exception as e:
+    error_message = f"An unexpected error has occured: {e}"
     logger.error(f"An error occurred: {e}")
-    upload_error_log(logs_container_client)
+    upload_error_log(logs_container_client, error_message)
     chat_box.ai_say(
         "An unexpected error has occured, please refer to the error logs for more information"
     )
