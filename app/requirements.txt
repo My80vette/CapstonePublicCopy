@@ -7,8 +7,11 @@ openai
 datetime
 azure.identity
 azure.storage.blob
+logger
 os
 json
-logger
 streamlit_modal
 modal
+pytz
+azure_mgmt_resource
+streamlit_option_menu
