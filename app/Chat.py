@@ -11,7 +11,7 @@ import os
 from log_setup import logger, upload_error_log, logs_container_client
 from openai import RateLimitError
 import pytz 
-
+from azure.mgmt.resource.resources import ResourceManagementClient
 
 # app title on sidebar, remove deploy buttton(mostly)
 def css_fix():
@@ -303,6 +303,25 @@ Analyze the following situation and the potential consequences of it. If there i
         st.session_state["chatInit"] = True
         loguruLogger.remove()
         init_logger()
+        
+    client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id="d68e4e7f-00e7-4d29-91e2-ccf35ca58e79")    
+    deployment = client.deployments.get(resource_group_name="ingenuityAI", deployment_name="ingenuityGPT")
+    deployment_status = deployment.properties.provisioning_state
+    
+    if deployment_status == "Succeeded":
+        st.success('All systems are functional', icon="🟩")
+    elif deployment_status == "Failed":
+        st.error('There has been a backend failure', icon="🟥")
+
+    try:
+            # -call AI API-
+        response = client.chat.completions.create(
+            model="ingenuityGPT"
+        )
+        # Handle the error and log it or display the response
+    except RateLimitError as e:
+        st.warning('Rate limit has been exceeded', icon="🟨")
+# This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 
 # This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 except Exception as e:
