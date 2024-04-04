@@ -3,6 +3,8 @@ from streamlit_chatbox import *
 from loguru import logger as loguruLogger
 from log_setup import logger, upload_error_log, logs_container_client
 from streamlit_modal import Modal
+from azure.storage.blob import BlobServiceClient
+import json
 
 # Error handling
 try:
@@ -50,8 +52,63 @@ try:
         loguruLogger.info("User selected options view")
 
 
+    # get current options (from blob storage)
+    def get_options(container_name, blob_name):
+        blob_service_client = BlobServiceClient(
+            account_url="https://ingenuitycontextstorage.blob.core.windows.net/",
+            credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
+        )
+        container_client = blob_service_client.get_container_client(
+            container=container_name
+        )
+        blob_list = container_client.list_blobs()
+        # only do anything if there is a blob
+        for blob in blob_list:
+            # initialize options
+            st.session_state["loadedOptions"] = []
+            # download options blob as string
+            blob_client = blob_service_client.get_blob_client(
+                container=container_name, blob=blob_name
+            )
+            downloader = blob_client.download_blob(max_concurrency=1, encoding="UTF-8")
+            st.session_state["loadedOptions"] = json.loads(downloader.readall())
+
+
+    def save_options():
+        blob_service_client = BlobServiceClient(
+            account_url="https://ingenuitycontextstorage.blob.core.windows.net/",
+            credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
+        )
+        blob_client = blob_service_client.get_blob_client(
+            container="stored-options", blob="options.txt"
+        )
+        new_options = [st.session_state["tempTemperature"], st.session_state["tempPrompt"]]
+        input_stream = json.dumps(new_options)
+        blob_client.upload_blob(input_stream, blob_type="BlockBlob", overwrite=True)
+
+
     # config for this page
     st.set_page_config(page_title="Options")
+    if "optionsInit" not in st.session_state:
+        get_options("stored-options", "options.txt")
+        if "loadedOptions" not in st.session_state:
+            # tempurature (default)
+            st.session_state["initTemperature"] = 0.20
+            # prompt (default)
+            st.session_state["initPrompt"] = """You are a subject matter expert for the Ingenuity mars helicopter and you have all the relevant documentation to act as such and make informed decisions.
+Analyze the situation and potential consequences of the problem.
+If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now.
+Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.
+At the end of each response, create a newline then cite your source, including the document title where the information came from.
+If you receive a multi-part question that involves multiple subsystems, pick the relevant info from each document, then cite them all, don't use just one document per response.
+Emphasize proactive suggestions over immediate actions.
+Use conditional language ('if', 'when') to guide the user.
+When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information."""
+        else:
+            # tempurature (custom)
+            st.session_state["initTemperature"] = st.session_state["loadedOptions"][0]
+            # prompt (custom)
+            st.session_state["initPrompt"] = st.session_state["loadedOptions"][1]
 
     # options (page body) 
 
@@ -64,13 +121,11 @@ try:
     )
 
     # temp slider
-    temperature = st.slider("Response Temperature", 0.00, 2.00, 0.20)
-    if "temperature" not in st.session_state:
-        st.session_state["temperature"] = temperature
-    if temperature != st.session_state.get("temperature"):
+    st.session_state["tempTemperature"] = st.slider("Response Temperature", 0.00, 2.00, st.session_state["initTemperature"])
+    if st.session_state["tempTemperature"] != st.session_state["initTemperature"]:
         # on-change block
-        loguruLogger.info("User selected response temperature: " + str(temperature))
-        st.session_state["temperature"] = temperature
+        loguruLogger.info("User selected response temperature: " + str(st.session_state["tempTemperature"]))
+        save_options()
 
     # view debug log 
     st.divider()
@@ -100,22 +155,15 @@ try:
 
     # editable prompt
     st.divider()
-    # lengthy, strangely formatted default value will be removed to a separate file in a future ticket (temp slider bug fix)(check comments on ticket)
-    if "promptingInstructions" not in st.session_state:
-        st.session_state["promptingInstructions"] = """You are a subject matter expert for the Ingenuity mars helicopter and you have all the relevant documentation to act as such and make informed decisions.
-Analyze the situation and potential consequences of the problem.
-If there's no immediate danger, suggest actions to mitigate or preemptively address the issue. If the danger is immediate and likely to cause a crash soon, land now.
-Explain your reasoning briefly. Use First person perspective, 'I' and 'My' in all of your responses.
-At the end of each response, create a newline then cite your source, including the document title where the information came from.
-If you receive a multi-part question that involves multiple subsystems, pick the relevant info from each document, then cite them all, don't use just one document per response.
-Emphasize proactive suggestions over immediate actions.
-Use conditional language ('if', 'when') to guide the user.
-When asked to explain a system or topic, return specifics including numbers, units, etc., do not generalize or use placeholders, you are an engineer providing precise technical information."""
-    st.session_state["promptingInstructions"] = st.text_area(
+    st.session_state["tempPrompt"] = st.text_area(
         "Edit AI Prompt",
-        st.session_state["promptingInstructions"],
+        st.session_state["initPrompt"],
         height=300
     )
+    if st.session_state["tempPrompt"] != st.session_state["initPrompt"]:
+        # on-change block
+        loguruLogger.info("User edited AI prompt: " + st.session_state["tempPrompt"])
+        save_options()
 
 
     # init page
