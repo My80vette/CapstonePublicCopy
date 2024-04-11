@@ -75,7 +75,7 @@ def upload_blob_stream(blob_service_client: BlobServiceClient, container_name, f
     blob_client = blob_service_client.get_blob_client(
         container=container_name, blob=(file_name + ".txt")
     )
-    blob_client.upload_blob(input_stream, blob_type="BlockBlob")
+    blob_client.upload_blob(input_stream, blob_type="BlockBlob", overwrite=True)
 
 
 # get current options (from blob storage)
@@ -179,9 +179,7 @@ try:
             for doc in doc_info:
                 docs_used.append(doc["title"])
 
-            # set ai chat title empty value
-            st.session_state["aiChatTitle"] = ""
-            
+
             # set options-controlled values (temperature / prompt instructions)
             # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
             if "loadedOptions" not in st.session_state:
@@ -248,7 +246,6 @@ Analyze the following situation and the potential consequences of it. If there i
                 )
 
                 # save chat history(after each response)
-
                 # timestamp and title only on first message
                 if "timeStamp" not in st.session_state:
                     st.session_state["timeStamp"] = datetime.now(pytz.timezone('US/Pacific')).strftime("%m-%d-%Y_%H'%M'%S")
@@ -292,8 +289,36 @@ Analyze the following situation and the potential consequences of it. If there i
                     (st.session_state["timeStamp"] + ".txt"),
                     titledChat,
                 )
-                
-                del st.session_state["timeStamp"]
+
+    # init page
+    css_fix()
+    if "chatInit" not in st.session_state:
+        if "chatHistoryInit" in st.session_state:
+            del st.session_state["chatHistoryInit"]
+        if "optionsInit" in st.session_state:
+            del st.session_state["optionsInit"]
+        st.session_state["chatInit"] = True
+        loguruLogger.remove()
+        init_logger()
+
+    # indicator lights (may remain unfinished)
+    # client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id="d68e4e7f-00e7-4d29-91e2-ccf35ca58e79")    
+    # deployment = client.deployments.get(resource_group_name="ingenuityAI", deployment_name="ingenuityGPT")
+    # deployment_status = deployment.properties.provisioning_state
+
+    # if deployment_status == "Succeeded":
+    #     st.sidebar.success('All systems are functional', icon="🟩")
+    # elif deployment_status == "Failed":
+    #     st.sidebar.error('There has been a backend failure', icon="🟥")
+
+    # try:
+    #         # -call AI API-
+    #     response = client.chat.completions.create(
+    #         model="ingenuityGPT"
+    #     )
+    #     # Handle the error and log it or display the response
+    # except RateLimitError as e:
+    #     st.sidebar.warning('Rate limit has been exceeded', icon="🟨")
 
 # This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 except Exception as e:
