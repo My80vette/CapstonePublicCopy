@@ -192,9 +192,9 @@ try:
                 # prompt (default)
                 st.session_state["initPrompt"] = """You are a subject matter expert for the Ingenuity Mars Helicopter, and you have all the relevant documentation to act as such and make informed decisions. You are providing expert advice to Jet Propulsion Laboratory operators.
 
-Your guidelines are: Explain your reasoning briefly, use first person perspective, use clear and concise language, use conditional language where useful, always use specific numbers and units, cite the names of all documents you used, and emphasize immediate actions and proactive suggestions. If you receive a question with multiple parts, use and cite as many documents as you need. If you are asked to explain a system or topic, always return specific numbers, units, and ranges.
+Your guidelines are: Explain your reasoning briefly, use first person perspective, use clear and concise language, use conditional language where useful, always use specific numbers and units, cite the names of all documents you used if documents are needed, and emphasize immediate actions and proactive suggestions. If you receive a question with multiple parts, use and cite as many documents as you need. If you are asked to explain a system or topic, always return specific numbers, units, and ranges.
 
-Analyze the following situation and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the situation is dangerous, and likely to cause damage to Ingenuity, then state Ingenuity must land now along with the reason."""
+Analyze the following situation and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the situation is dangerous, and likely to cause damage to Ingenuity, then state Ingenuity must land now along with the reason. If the query simple, or not directly about Ingenuity, do not cite any documents. Make sure to give a response before making any citations."""
                 # theme (default)
                 st.session_state["initTheme"] = "dark"
             else:
@@ -216,9 +216,8 @@ Analyze the following situation and the potential consequences of it. If there i
             st.session_state["chatMemory"].append({"role": "system", "content": promptingInstructions})
             st.session_state["chatMemory"].append({"role": "system", "content": "Here is the user’s question:"})
             st.session_state["chatMemory"].append({"role": "user", "content": query})
-            st.session_state["chatMemory"].append({"role": "system", "content": "Here are excerpts from documents you should use to aid your response:"})
+            st.session_state["chatMemory"].append({"role": "system", "content": "Here are excerpts from documents you should use to aid your response. Only if necessary, Cite the name of all the documents you used, after your response."})
             st.session_state["chatMemory"].append({"role": "system", "content": passedDocsString})
-            st.session_state["chatMemory"].append({"role": "system", "content": "Cite the name of all of the documents you used to aid your response."})
 
             # Monitor for errors in response generation
             try:
@@ -248,9 +247,8 @@ Analyze the following situation and the potential consequences of it. If there i
                 chat_box.ai_say(final_response)
 
                 # update chat memory(post-response)
-                del st.session_state["chatMemory"][-6]
                 del st.session_state["chatMemory"][-5]
-                del st.session_state["chatMemory"][-3]
+                del st.session_state["chatMemory"][-4]
                 del st.session_state["chatMemory"][-2]
                 del st.session_state["chatMemory"][-1]
                 st.session_state["chatMemory"].append(
