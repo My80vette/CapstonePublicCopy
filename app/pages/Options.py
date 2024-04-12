@@ -88,13 +88,13 @@ try:
 
 
     # config for this page
-    css_fix()
     st.set_page_config(page_title="Options")
+    css_fix()
     if "optionsInit" not in st.session_state:
         get_options("stored-options", "options.txt")
         if "loadedOptions" not in st.session_state:
             # tempurature (default)
-            st.session_state["initTemperature"] = 0.20
+            st.session_state["initTemperature"] = 0.200
             # prompt (default)
             st.session_state["initPrompt"] = """You are a subject matter expert for the Ingenuity Mars Helicopter, and you have all the relevant documentation to act as such and make informed decisions. You are providing expert advice to Jet Propulsion Laboratory operators.
 
@@ -122,7 +122,7 @@ Analyze the following situation and the potential consequences of it. If there i
     )
 
     # temp slider
-    st.session_state["tempTemperature"] = st.slider("Response Temperature", 0.00, 2.00, st.session_state["initTemperature"])
+    st.session_state["tempTemperature"] = st.slider("Response Temperature", 0.000, 1.000, st.session_state["initTemperature"])
     if st.session_state["tempTemperature"] != st.session_state["initTemperature"]:
         # on-change block
         loguruLogger.info("User selected response temperature: " + str(st.session_state["tempTemperature"]))

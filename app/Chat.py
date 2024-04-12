@@ -97,8 +97,8 @@ def get_options(blob_service_client: BlobServiceClient, container_name, blob_nam
 
 
 # config for this page
-css_fix()
 st.set_page_config(page_title="Chat")
+css_fix()
 if "optionsInit" not in st.session_state:
     storageClient = BlobServiceClient(
         account_url="https://ingenuitycontextstorage.blob.core.windows.net/",
@@ -222,6 +222,8 @@ Analyze the following situation and the potential consequences of it. If there i
 
             # Monitor for errors in response generation
             try:
+                # st.sidebar.write(callTemperature)
+                # st.sidebar.write(st.session_state["chatMemory"])
                 # -call AI API-
                 response = client.chat.completions.create(
                     model=deployment_name,
