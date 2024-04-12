@@ -104,6 +104,7 @@ if "optionsInit" not in st.session_state:
         credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
     )
     get_options(storageClient, "stored-options", "options.txt")
+lightError = False
 
 # Start error logging
 try:
@@ -137,6 +138,8 @@ try:
             chat_box.ai_say(
                 "An unexpected error has occurred while generating the response. You may have exceeded the maximum token length, please try again or shorten your query. For more information, please refer to the error logs."
             )
+            st.sidebar.error('There Has Been a Backend Failure.', icon="🟥")
+            lightError = True
             continue_execution = False
         ## st.sidebar.write(embeddings.data[0].embedding)
         if continue_execution:
@@ -184,18 +187,22 @@ try:
             # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
             if "loadedOptions" not in st.session_state:
                 # tempurature (default)
-                callTemperature = 0.20
+                st.session_state["initTemperature"] = 0.20
                 # prompt (default)
-                promptingInstructions = """You are a subject matter expert for the Ingenuity Mars Helicopter, and you have all the relevant documentation to act as such and make informed decisions. You are providing expert advice to Jet Propulsion Laboratory operators.
+                st.session_state["initPrompt"] = """You are a subject matter expert for the Ingenuity Mars Helicopter, and you have all the relevant documentation to act as such and make informed decisions. You are providing expert advice to Jet Propulsion Laboratory operators.
 
 Your guidelines are: Explain your reasoning briefly, use first person perspective, use clear and concise language, use conditional language where useful, always use specific numbers and units, cite the names of all documents you used, and emphasize immediate actions and proactive suggestions. If you receive a question with multiple parts, use and cite as many documents as you need. If you are asked to explain a system or topic, always return specific numbers, units, and ranges.
 
 Analyze the following situation and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the situation is dangerous, and likely to cause damage to Ingenuity, then state Ingenuity must land now along with the reason."""
+                # theme (default)
+                st.session_state["initTheme"] = "dark"
             else:
                 # tempurature (custom)
                 callTemperature = st.session_state["loadedOptions"][0]
                 # prompt (custom)
                 promptingInstructions = st.session_state["loadedOptions"][1]
+                # theme (default)
+                currentTheme = st.session_state["loadedOptions"][2]
 
             # prep doc excerpts
             passedDocsString = ""
@@ -226,8 +233,10 @@ Analyze the following situation and the potential consequences of it. If there i
                 logger.error(f"Rate limit exceeded: {e}")
                 upload_error_log(logs_container_client, error_message)
                 chat_box.ai_say(
-                    "An error has occurred while generating the response due to exceeding the rate limit. Please try again in one minute. For more information, please refer to the error logs."
+                    "An error has occurred while generating the response due to exceeding the rate limit. Please try again in two minutes. For more information, please refer to the error logs."
                 )
+                st.sidebar.warning('The Rate Limit Has Been Exceded.', icon="🟨")
+                lightError = True
                 continue_execution = False
 
             if continue_execution:
@@ -275,6 +284,8 @@ Analyze the following situation and the potential consequences of it. If there i
                         chat_box.ai_say(
                             "An error occured while trying to generate a chat title, please try again"
                         )
+                        st.sidebar.error('There Has Been a Backend Failure.', icon="🟥")
+                        lightError = True
 
                 # upload to blob storage
                 stringChat = json.dumps(st.session_state["chatMemory"], separators=(",", ":"))
@@ -301,24 +312,9 @@ Analyze the following situation and the potential consequences of it. If there i
         loguruLogger.remove()
         init_logger()
 
-    # indicator lights (may remain unfinished)
-    # client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id="d68e4e7f-00e7-4d29-91e2-ccf35ca58e79")    
-    # deployment = client.deployments.get(resource_group_name="ingenuityAI", deployment_name="ingenuityGPT")
-    # deployment_status = deployment.properties.provisioning_state
-
-    # if deployment_status == "Succeeded":
-    #     st.sidebar.success('All systems are functional', icon="🟩")
-    # elif deployment_status == "Failed":
-    #     st.sidebar.error('There has been a backend failure', icon="🟥")
-
-    # try:
-    #         # -call AI API-
-    #     response = client.chat.completions.create(
-    #         model="ingenuityGPT"
-    #     )
-    #     # Handle the error and log it or display the response
-    # except RateLimitError as e:
-    #     st.sidebar.warning('Rate limit has been exceeded', icon="🟨")
+    # successful indicator light
+    if lightError == False:
+        st.sidebar.success('All Systems Functional.', icon="🟩")
 
 # This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 except Exception as e:
@@ -328,3 +324,5 @@ except Exception as e:
     chat_box.ai_say(
         "An unexpected error has occured, please refer to the error logs for more information"
     )
+    st.sidebar.error('There Has Been a Backend Failure.', icon="🟥")
+    lightError = True
