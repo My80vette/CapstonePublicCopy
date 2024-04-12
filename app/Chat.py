@@ -97,6 +97,7 @@ def get_options(blob_service_client: BlobServiceClient, container_name, blob_nam
 
 
 # config for this page
+css_fix()
 st.set_page_config(page_title="Chat")
 if "optionsInit" not in st.session_state:
     storageClient = BlobServiceClient(

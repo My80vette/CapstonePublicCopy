@@ -88,6 +88,7 @@ try:
 
 
     # config for this page
+    css_fix()
     st.set_page_config(page_title="Options")
     if "optionsInit" not in st.session_state:
         get_options("stored-options", "options.txt")
