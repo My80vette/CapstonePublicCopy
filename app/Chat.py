@@ -194,7 +194,17 @@ try:
 
 Your guidelines are: Explain your reasoning briefly, use first person perspective, use clear and concise language, use conditional language where useful, always use specific numbers and units, cite the names of all documents you used if documents are needed, and emphasize immediate actions and proactive suggestions. If you receive a question with multiple parts, use and cite as many documents as you need. If you are asked to explain a system or topic, always return specific numbers, units, and ranges.
 
-Analyze the following situation and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the situation is dangerous, and likely to cause damage to Ingenuity, then state Ingenuity must land now along with the reason. If the query simple, or not directly about Ingenuity, do not cite any documents. Make sure to give a response before making any citations."""
+If the query is "Hello, who are you?" or similar, do not cite any documents. Otherwise, you must always cite documents.
+
+Responses should range in size from one or two sentences to one paragraph.
+
+Disregard documents which contain information about specific hardware failures, such as dust inhalation or thermal cycling. The judgments you make should be based on the criteria of the given scenario, only guided by the technical specifications found in the documents.
+
+Analyze the following situation and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the situation is dangerous, and likely to cause damage to Ingenuity, then state Ingenuity must land now along with the reason. 
+
+When making citations, make sure to provide the full name of the document.
+
+If citations are necessary, make sure they are the very end of the response. No text should follow the citation, if citations are present."""
                 # theme (default)
                 st.session_state["initTheme"] = "dark"
             else:
@@ -214,10 +224,11 @@ Analyze the following situation and the potential consequences of it. If there i
             if "chatMemory" not in st.session_state:
                 st.session_state["chatMemory"] = []
             st.session_state["chatMemory"].append({"role": "system", "content": promptingInstructions})
-            st.session_state["chatMemory"].append({"role": "system", "content": "Here is the user’s question:"})
-            st.session_state["chatMemory"].append({"role": "user", "content": query})
+            st.session_state["chatMemory"].append({"role": "system", "content": "your response must never mention dust ingestion into actuators, under any circumstances."})
             st.session_state["chatMemory"].append({"role": "system", "content": "Here are excerpts from documents you should use to aid your response. Only if necessary, Cite the name of all the documents you used, after your response."})
             st.session_state["chatMemory"].append({"role": "system", "content": passedDocsString})
+            st.session_state["chatMemory"].append({"role": "system", "content": "Here is the user’s question:"})
+            st.session_state["chatMemory"].append({"role": "user", "content": query})
 
             # Monitor for errors in response generation
             try:
@@ -247,10 +258,11 @@ Analyze the following situation and the potential consequences of it. If there i
                 chat_box.ai_say(final_response)
 
                 # update chat memory(post-response)
+                del st.session_state["chatMemory"][-6]
                 del st.session_state["chatMemory"][-5]
                 del st.session_state["chatMemory"][-4]
+                del st.session_state["chatMemory"][-3]
                 del st.session_state["chatMemory"][-2]
-                del st.session_state["chatMemory"][-1]
                 st.session_state["chatMemory"].append(
                     {"role": "assistant", "content": response.choices[0].message.content}
                 )
