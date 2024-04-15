@@ -146,7 +146,7 @@ try:
         if continue_execution:
             # -get search results-
             endpoint = "https://ingenuity-ai-search.search.windows.net/"
-            index_name = "vector-1709324901732"
+            index_name = "contextindexer"
             api_version = "2023-11-01"
             api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
             search_url = (
@@ -192,19 +192,23 @@ try:
                 # prompt (default)
                 st.session_state["initPrompt"] = """You are a subject matter expert for the Ingenuity Mars Helicopter, and you have all the relevant documentation to act as such and make informed decisions. You are providing expert advice to Jet Propulsion Laboratory operators.
 
-Your guidelines are: Explain your reasoning briefly, use first person perspective, use clear and concise language, use conditional language where useful, always use specific numbers and units, cite the names of all documents you used if documents are needed, and emphasize immediate actions and proactive suggestions. If you receive a question with multiple parts, use and cite as many documents as you need. If you are asked to explain a system or topic, always return specific numbers, units, and ranges.
+Your guidelines are: Explain your reasoning briefly, use first person perspective, use clear and concise language, use conditional language where useful, always use specific numbers and units, cite the names of all documents you used if documents are needed, and emphasize immediate actions. If you receive a query with multiple parts, use and cite as many documents as you need. If you are asked to explain a system or topic, always return specific numbers, units, and ranges.
 
-If the query is "Hello, who are you?" or similar, do not cite any documents. Otherwise, you must always cite documents.
+If the query is not directly related to ingenuity, do not cite any documents. Otherwise, you must always cite documents.
 
 Responses should range in size from one or two sentences to one paragraph.
 
-Disregard documents which contain information about specific hardware failures, such as dust inhalation or thermal cycling. The judgments you make should be based on the criteria of the given scenario, only guided by the technical specifications found in the documents.
+Disregard documents which contain information about specific past hardware failures. The judgments you make should be based on the criteria of the given scenario, only guided by the technical specifications found in the documents.
 
-Analyze the following situation and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the situation is dangerous, and likely to cause damage to Ingenuity, then state Ingenuity must land now along with the reason. 
+Analyze the following query and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the query describes danger or potential damage to Ingenuity, then state Ingenuity must land now along with the reason.
 
-When making citations, make sure to provide the full name of the document.
+If the query asks for the steps of a process, then list all steps of the process exactly as they are in the documents. Do not shorten or remove any steps.
 
-If citations are necessary, make sure they are the very end of the response. No text should follow the citation, if citations are present."""
+Pay close attention to numerical values in the query. If the query contains a number, make sure to be aware of it.
+
+When making citations, do not abbreviate the file name - provide the full name of the document. Document names must not be shortened.
+
+If citations are necessary, make sure they are the very end of the response. No text should follow the citation, if citations are present. Do not cite the same document more than once. Do not give document titles in the middle of the response."""
                 # theme (default)
                 st.session_state["initTheme"] = "dark"
             else:
@@ -224,7 +228,6 @@ If citations are necessary, make sure they are the very end of the response. No 
             if "chatMemory" not in st.session_state:
                 st.session_state["chatMemory"] = []
             st.session_state["chatMemory"].append({"role": "system", "content": promptingInstructions})
-            st.session_state["chatMemory"].append({"role": "system", "content": "your response must never mention dust ingestion into actuators, under any circumstances."})
             st.session_state["chatMemory"].append({"role": "system", "content": "Here are excerpts from documents you should use to aid your response. Only if necessary, Cite the name of all the documents you used, after your response."})
             st.session_state["chatMemory"].append({"role": "system", "content": passedDocsString})
             st.session_state["chatMemory"].append({"role": "system", "content": "Here is the user’s question:"})
@@ -258,7 +261,6 @@ If citations are necessary, make sure they are the very end of the response. No 
                 chat_box.ai_say(final_response)
 
                 # update chat memory(post-response)
-                del st.session_state["chatMemory"][-6]
                 del st.session_state["chatMemory"][-5]
                 del st.session_state["chatMemory"][-4]
                 del st.session_state["chatMemory"][-3]
