@@ -1,5 +1,5 @@
 pathlib
-streamlit
+streamlit==1.30.0
 streamlit_chatbox
 loguru
 requests

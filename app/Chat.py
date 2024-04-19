@@ -75,7 +75,7 @@ def upload_blob_stream(blob_service_client: BlobServiceClient, container_name, f
     blob_client = blob_service_client.get_blob_client(
         container=container_name, blob=(file_name + ".txt")
     )
-    blob_client.upload_blob(input_stream, blob_type="BlockBlob")
+    blob_client.upload_blob(input_stream, blob_type="BlockBlob", overwrite=True)
 
 
 # get current options (from blob storage)
@@ -98,12 +98,14 @@ def get_options(blob_service_client: BlobServiceClient, container_name, blob_nam
 
 # config for this page
 st.set_page_config(page_title="Chat")
+css_fix()
 if "optionsInit" not in st.session_state:
     storageClient = BlobServiceClient(
         account_url="https://ingenuitycontextstorage.blob.core.windows.net/",
         credential="RZkbZbqbW3FGkhz/wcwsWBqzZbmncBZaj5dRDSwrMOJo0xsGDobNIIdpXyLk86iQNNyrYsk6xUgF+AStDtSz6w==",
     )
     get_options(storageClient, "stored-options", "options.txt")
+lightError = False
 
 # Start error logging
 try:
@@ -137,12 +139,14 @@ try:
             chat_box.ai_say(
                 "An unexpected error has occurred while generating the response. You may have exceeded the maximum token length, please try again or shorten your query. For more information, please refer to the error logs."
             )
+            st.sidebar.error('There Has Been a Backend Failure.', icon="🟥")
+            lightError = True
             continue_execution = False
         ## st.sidebar.write(embeddings.data[0].embedding)
         if continue_execution:
             # -get search results-
             endpoint = "https://ingenuity-ai-search.search.windows.net/"
-            index_name = "vector-1709324901732"
+            index_name = "contextindexer"
             api_version = "2023-11-01"
             api_key = "nmnRajq7Ydh4epVjBkBwyRvfrvWDCfjPf7Amf4bRm6AzSeCqIxtX"
             search_url = (
@@ -179,25 +183,41 @@ try:
             for doc in doc_info:
                 docs_used.append(doc["title"])
 
-            # set ai chat title empty value
-            st.session_state["aiChatTitle"] = ""
-            
+
             # set options-controlled values (temperature / prompt instructions)
             # Tell the model to not just make a hard go/nogo decision, decide the criticality of an error and use the documentation to decide what the craft should do moving forward
             if "loadedOptions" not in st.session_state:
                 # tempurature (default)
-                callTemperature = 0.20
+                st.session_state["initTemperature"] = 0.20
                 # prompt (default)
-                promptingInstructions = """You are a subject matter expert for the Ingenuity Mars Helicopter, and you have all the relevant documentation to act as such and make informed decisions. You are providing expert advice to Jet Propulsion Laboratory operators.
+                st.session_state["initPrompt"] = """You are a subject matter expert for the Ingenuity Mars Helicopter, and you have all the relevant documentation to act as such and make informed decisions. You are providing expert advice to Jet Propulsion Laboratory operators.
 
-Your guidelines are: Explain your reasoning briefly, use first person perspective, use clear and concise language, use conditional language where useful, always use specific numbers and units, cite the names of all documents you used, and emphasize immediate actions and proactive suggestions. If you receive a question with multiple parts, use and cite as many documents as you need. If you are asked to explain a system or topic, always return specific numbers, units, and ranges.
+Your guidelines are: Explain your reasoning briefly, use first person perspective, use clear and concise language, use conditional language where useful, always use specific numbers and units, cite the names of all documents you used if documents are needed, and emphasize immediate actions. If you receive a query with multiple parts, use and cite as many documents as you need. If you are asked to explain a system or topic, always return specific numbers, units, and ranges.
 
-Analyze the following situation and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the situation is dangerous, and likely to cause damage to Ingenuity, then state Ingenuity must land now along with the reason."""
+If the query is not directly related to ingenuity, do not cite any documents. Otherwise, you must always cite documents.
+
+Responses should range in size from one or two sentences to one paragraph.
+
+Disregard documents which contain information about specific past hardware failures. The judgments you make should be based on the criteria of the given scenario, only guided by the technical specifications found in the documents.
+
+Analyze the following query and the potential consequences of it. If there is no immediate danger to Ingenuity, then say there is no immediate danger and suggest actions to mitigate future problems. If the query describes danger or potential damage to Ingenuity, then state Ingenuity must land now along with the reason.
+
+If the query asks for the steps of a process, then list all steps of the process exactly as they are in the documents. Do not shorten or remove any steps.
+
+Pay close attention to numerical values in the query. If the query contains a number, make sure to be aware of it.
+
+When making citations, do not abbreviate the file name - provide the full name of the document. Document names must not be shortened.
+
+If citations are necessary, make sure they are the very end of the response. No text should follow the citation, if citations are present. Do not cite the same document more than once. Do not give document titles in the middle of the response."""
+                # theme (default)
+                st.session_state["initTheme"] = "dark"
             else:
                 # tempurature (custom)
                 callTemperature = st.session_state["loadedOptions"][0]
                 # prompt (custom)
                 promptingInstructions = st.session_state["loadedOptions"][1]
+                # theme (default)
+                currentTheme = st.session_state["loadedOptions"][2]
 
             # prep doc excerpts
             passedDocsString = ""
@@ -208,14 +228,15 @@ Analyze the following situation and the potential consequences of it. If there i
             if "chatMemory" not in st.session_state:
                 st.session_state["chatMemory"] = []
             st.session_state["chatMemory"].append({"role": "system", "content": promptingInstructions})
+            st.session_state["chatMemory"].append({"role": "system", "content": "Here are excerpts from documents you should use to aid your response. Only if necessary, Cite the name of all the documents you used, after your response."})
+            st.session_state["chatMemory"].append({"role": "system", "content": passedDocsString})
             st.session_state["chatMemory"].append({"role": "system", "content": "Here is the user’s question:"})
             st.session_state["chatMemory"].append({"role": "user", "content": query})
-            st.session_state["chatMemory"].append({"role": "system", "content": "Here are excerpts from documents you should use to aid your response:"})
-            st.session_state["chatMemory"].append({"role": "system", "content": passedDocsString})
-            st.session_state["chatMemory"].append({"role": "system", "content": "Cite the name of all of the documents you used to aid your response."})
 
             # Monitor for errors in response generation
             try:
+                # st.sidebar.write(callTemperature)
+                # st.sidebar.write(st.session_state["chatMemory"])
                 # -call AI API-
                 response = client.chat.completions.create(
                     model=deployment_name,
@@ -228,8 +249,10 @@ Analyze the following situation and the potential consequences of it. If there i
                 logger.error(f"Rate limit exceeded: {e}")
                 upload_error_log(logs_container_client, error_message)
                 chat_box.ai_say(
-                    "An error has occurred while generating the response due to exceeding the rate limit. Please try again in one minute. For more information, please refer to the error logs."
+                    "An error has occurred while generating the response due to exceeding the rate limit. Please try again in two minutes. For more information, please refer to the error logs."
                 )
+                st.sidebar.warning('The Rate Limit Has Been Exceded.', icon="🟨")
+                lightError = True
                 continue_execution = False
 
             if continue_execution:
@@ -238,17 +261,15 @@ Analyze the following situation and the potential consequences of it. If there i
                 chat_box.ai_say(final_response)
 
                 # update chat memory(post-response)
-                del st.session_state["chatMemory"][-6]
                 del st.session_state["chatMemory"][-5]
+                del st.session_state["chatMemory"][-4]
                 del st.session_state["chatMemory"][-3]
                 del st.session_state["chatMemory"][-2]
-                del st.session_state["chatMemory"][-1]
                 st.session_state["chatMemory"].append(
                     {"role": "assistant", "content": response.choices[0].message.content}
                 )
 
                 # save chat history(after each response)
-
                 # timestamp and title only on first message
                 if "timeStamp" not in st.session_state:
                     st.session_state["timeStamp"] = datetime.now(pytz.timezone('US/Pacific')).strftime("%m-%d-%Y_%H'%M'%S")
@@ -278,6 +299,8 @@ Analyze the following situation and the potential consequences of it. If there i
                         chat_box.ai_say(
                             "An error occured while trying to generate a chat title, please try again"
                         )
+                        st.sidebar.error('There Has Been a Backend Failure.', icon="🟥")
+                        lightError = True
 
                 # upload to blob storage
                 stringChat = json.dumps(st.session_state["chatMemory"], separators=(",", ":"))
@@ -292,8 +315,21 @@ Analyze the following situation and the potential consequences of it. If there i
                     (st.session_state["timeStamp"] + ".txt"),
                     titledChat,
                 )
-                
-                del st.session_state["timeStamp"]
+
+    # init page
+    css_fix()
+    if "chatInit" not in st.session_state:
+        if "chatHistoryInit" in st.session_state:
+            del st.session_state["chatHistoryInit"]
+        if "optionsInit" in st.session_state:
+            del st.session_state["optionsInit"]
+        st.session_state["chatInit"] = True
+        loguruLogger.remove()
+        init_logger()
+
+    # successful indicator light
+    if lightError == False:
+        st.sidebar.success('All Systems Functional.', icon="🟩")
 
 # This should capture errors in the actual UI, all OpenAI calls are monitored seperatly.
 except Exception as e:
@@ -303,3 +339,5 @@ except Exception as e:
     chat_box.ai_say(
         "An unexpected error has occured, please refer to the error logs for more information"
     )
+    st.sidebar.error('There Has Been a Backend Failure.', icon="🟥")
+    lightError = True
